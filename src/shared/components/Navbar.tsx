@@ -10,6 +10,7 @@ import {
   ChevronRight,
   Landmark,
 } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 interface NavItem {
   label: string;
@@ -31,12 +32,14 @@ const NAV_ITEMS: NavItem[] = [
     sectionId: "alur-pengajuan",
   },
   { label: "Kontak", href: "#kontak", sectionId: "kontak" },
+  { label: "FAQ", href: "#faq", sectionId: "faq" },
 ];
 
 export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [activeSection, setActiveSection] = useState<string>("hero");
+  const pathname = usePathname();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -78,6 +81,14 @@ export default function Navbar() {
       setIsMobileMenuOpen(false);
     }
   };
+
+  const hideNavbar =
+    pathname.startsWith("/dashboard") ||
+    ["login", "register", "403", "verify", "lupa-password"].some((route) =>
+      pathname.includes(route),
+    );
+
+  if (hideNavbar) return null;
 
   return (
     <header

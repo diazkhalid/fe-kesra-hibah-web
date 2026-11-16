@@ -12,6 +12,7 @@ import {
   ChevronRight,
   ShieldCheck,
 } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 interface FooterNavItem {
   label: string;
@@ -38,6 +39,7 @@ const FOOTER_NAV_ITEMS: FooterNavItem[] = [
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
+  const pathname = usePathname();
 
   const handleSmoothScroll = (
     e: React.MouseEvent<HTMLAnchorElement>,
@@ -56,6 +58,14 @@ export default function Footer() {
       });
     }
   };
+
+  const hideNavbar =
+    pathname.startsWith("/dashboard") ||
+    ["login", "register", "403", "verify", "lupa-password"].some((route) =>
+      pathname.includes(route),
+    );
+
+  if (hideNavbar) return null;
 
   return (
     <footer className="relative bg-app-primary-950 text-white border-t border-app-primary-900 overflow-hidden">

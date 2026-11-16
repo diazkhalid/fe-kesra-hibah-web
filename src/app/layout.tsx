@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { poppins } from "./shared/fonts";
-import Navbar from "./shared/components/Navbar";
-import Footer from "./shared/components/Footer";
+import { poppins } from "@/shared/fonts";
+import Navbar from "@/shared/components/Navbar";
+import Footer from "@/shared/components/Footer";
 
 export const metadata: Metadata = {
   title: "Pengajuan Hibah Kabupaten Sumbawa",

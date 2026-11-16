@@ -16,8 +16,8 @@ export default function HomePage() {
       <RequirementsSection></RequirementsSection>
       <SubmissionFlowSection></SubmissionFlowSection>
       <AdvantagesSection></AdvantagesSection>
-      <FaqSection></FaqSection>
       <ContactSection></ContactSection>
+      <FaqSection></FaqSection>
     </>
   );
 }

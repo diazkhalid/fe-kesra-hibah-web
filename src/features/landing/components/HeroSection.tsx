@@ -141,7 +141,7 @@ export default function HeroSection() {
             {/* Kontainer Foto Utama */}
             <div className="relative rounded-3xl overflow-hidden bg-app-primary-900 border-2 border-white/30 shadow-2xl aspect-[4/3]">
               <Image
-                src="/images/hero-pelayanan-hibah.jpg"
+                src="/images/hibah-hero.jpeg"
                 alt="Pelayanan Publik dan Koordinasi Pengajuan Hibah Pemerintah Kabupaten Sumbawa"
                 fill
                 priority
