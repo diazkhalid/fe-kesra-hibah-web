@@ -55,7 +55,7 @@ export default function LoginPage() {
     try {
       // Hubungkan dengan NextAuth signIn("google") atau OAuth provider Anda
       await new Promise((resolve) => setTimeout(resolve, 900));
-      router.push("/dashboard");
+      router.push("/dashboard/admin");
     } catch {
       setErrorMessage("Gagal menghubungkan dengan akun Google.");
     } finally {
