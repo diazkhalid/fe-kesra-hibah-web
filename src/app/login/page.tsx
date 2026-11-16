@@ -41,7 +41,7 @@ export default function LoginPage() {
     try {
       // Simulasi proses autentikasi kredensial
       await new Promise((resolve) => setTimeout(resolve, 900));
-      router.push("/dashboard");
+      router.push("/dashboard/pemohon");
     } catch {
       setErrorMessage("Email/username atau password tidak sesuai.");
     } finally {
