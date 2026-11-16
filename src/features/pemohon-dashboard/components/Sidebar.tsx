@@ -8,6 +8,7 @@ import {
   FilePlus2,
   History,
   Bell,
+  UserCircle2,
   Landmark,
   PanelLeftClose,
   PanelLeftOpen,
@@ -76,6 +77,16 @@ export default function PemohonSidebar({
           href: "/dashboard/pemohon/notifikasi",
           icon: Bell,
           badge: unreadNotifications > 0 ? unreadNotifications : undefined,
+        },
+      ],
+    },
+    {
+      category: "Akun",
+      items: [
+        {
+          label: "Profil Saya",
+          href: "/dashboard/pemohon/profil",
+          icon: UserCircle2,
         },
       ],
     },

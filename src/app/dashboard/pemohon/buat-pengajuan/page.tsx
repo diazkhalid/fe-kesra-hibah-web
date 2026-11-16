@@ -23,9 +23,11 @@ import {
   Loader2,
   ArrowLeft,
   ShieldCheck,
+  ExternalLink,
+  BadgeCheck,
 } from "lucide-react";
 
-type StepId = 1 | 2 | 3 | 4 | 5;
+type StepId = 1 | 2 | 3;
 
 interface UploadedDoc {
   file: File;
@@ -107,32 +109,53 @@ const DOC_REQUIREMENTS: DocRequirement[] = [
 ];
 
 const STEPS = [
-  { id: 1 as StepId, title: "Identitas Pemohon", short: "Pemohon", icon: User },
   {
-    id: 2 as StepId,
-    title: "Identitas Organisasi",
-    short: "Organisasi",
-    icon: Building2,
-  },
-  {
-    id: 3 as StepId,
+    id: 1 as StepId,
     title: "Informasi Pengajuan",
     short: "Pengajuan",
     icon: FileText,
   },
   {
-    id: 4 as StepId,
+    id: 2 as StepId,
     title: "Upload Dokumen",
     short: "Dokumen",
     icon: UploadCloud,
   },
   {
-    id: 5 as StepId,
+    id: 3 as StepId,
     title: "Review dan Kirim",
     short: "Review",
     icon: CheckCircle2,
   },
 ];
+
+// Data Profil Pemohon & Organisasi yang otomatis ditarik dari halaman Profil Saya
+const PROFILE_DATA = {
+  pemohon: {
+    namaLengkap: "Ahmad Fauzi",
+    nik: "5204081205880003",
+    tempatLahir: "Sumbawa Besar",
+    tanggalLahir: "1988-05-12",
+    jenisKelamin: "Laki-laki",
+    alamatLengkap:
+      "Jl. Kebayan No. 14, Kelurahan Uma Sima, Kecamatan Sumbawa, Kabupaten Sumbawa",
+    nomorHp: "081237889910",
+    email: "ahmad.fauzi@nuruliman.or.id",
+  },
+  organisasi: {
+    namaOrganisasi: "Yayasan Nurul Iman Sumbawa",
+    jenisOrganisasi: "Yayasan / Lembaga Keagamaan",
+    nomorAktaPendirian: "AHU-0014829.AH.01.04.Tahun 2019",
+    tanggalPendirian: "2019-08-17",
+    nomorSkOrganisasi: "SK-04/YNI-SBW/2024",
+    alamatOrganisasi:
+      "Jl. Garuda Gg. Melati No. 08, Kelurahan Lempeh, Kecamatan Sumbawa, Kabupaten Sumbawa",
+    namaKetua: "Ahmad Fauzi",
+    nomorHpKetua: "081237889910",
+    namaSekretaris: "Siti Rahmawati, S.Pd.",
+    namaBendahara: "Muhammad Ridwan, S.E.",
+  },
+};
 
 // Helper membuat file PDF dummy yang valid agar bisa langsung di-preview di modal
 function createDummyPdfFile(fileName: string, titleText: string): File {
@@ -185,36 +208,8 @@ export default function BuatPengajuanPage() {
     doc: UploadedDoc;
   } | null>(null);
 
-  // STEP 1: Data Dummy Identitas Pemohon
-  const [step1, setStep1] = useState({
-    namaLengkap: "Ahmad Fauzi",
-    nik: "5204081205880003",
-    tempatLahir: "Sumbawa Besar",
-    tanggalLahir: "1988-05-12",
-    jenisKelamin: "Laki-laki",
-    alamatLengkap:
-      "Jl. Kebayan No. 14, Kelurahan Uma Sima, Kecamatan Sumbawa, Kabupaten Sumbawa",
-    nomorHp: "081237889910",
-    email: "ahmad.fauzi@nuruliman.or.id",
-  });
-
-  // STEP 2: Data Dummy Identitas Organisasi / Lembaga
-  const [step2, setStep2] = useState({
-    namaOrganisasi: "Yayasan Nurul Iman Sumbawa",
-    jenisOrganisasi: "Yayasan / Lembaga Keagamaan",
-    nomorAktaPendirian: "AHU-0014829.AH.01.04.Tahun 2019",
-    tanggalPendirian: "2019-08-17",
-    nomorSkOrganisasi: "SK-04/YNI-SBW/2024",
-    alamatOrganisasi:
-      "Jl. Garuda Gg. Melati No. 08, Kelurahan Lempeh, Kecamatan Sumbawa, Kabupaten Sumbawa",
-    namaKetua: "Ahmad Fauzi",
-    nomorHpKetua: "081237889910",
-    namaSekretaris: "Siti Rahmawati, S.Pd.",
-    namaBendahara: "Muhammad Ridwan, S.E.",
-  });
-
-  // STEP 3: Data Dummy Informasi Pengajuan
-  const [step3, setStep3] = useState({
+  // STEP 1 (Sebelumnya Step 3): Informasi Pengajuan
+  const [pengajuanForm, setPengajuanForm] = useState({
     tahunPengajuan: "2027",
     bidangPengajuan: "Keagamaan & Sarana Ibadah",
     namaKegiatan:
@@ -231,7 +226,7 @@ export default function BuatPengajuanPage() {
       "Memberikan fasilitas belajar Al-Quran yang representatif bagi 145 santri serta mendukung program pembinaan generasi muda berakhlak mulia di wilayah Kecamatan Sumbawa.",
   });
 
-  // STEP 4: Data Dummy Dokumen Terunggah
+  // STEP 2 (Sebelumnya Step 4): Upload Dokumen
   const [documents, setDocuments] = useState<Record<string, UploadedDoc>>({});
 
   // Inisialisasi file PDF dummy saat komponen dimuat di client
@@ -283,7 +278,7 @@ export default function BuatPengajuanPage() {
     };
   }, []);
 
-  // STEP 5: Pernyataan Kebenaran Data (default true agar langsung bisa uji kirim)
+  // STEP 3 (Sebelumnya Step 5): Pernyataan Kebenaran Data
   const [isDeclaredTrue, setIsDeclaredTrue] = useState(true);
 
   const formatRupiahInput = (raw: string) => {
@@ -354,52 +349,15 @@ export default function BuatPengajuanPage() {
 
     if (step === 1) {
       if (
-        !step1.namaLengkap.trim() ||
-        step1.nik.length !== 16 ||
-        !step1.tempatLahir.trim() ||
-        !step1.tanggalLahir ||
-        !step1.jenisKelamin ||
-        !step1.alamatLengkap.trim() ||
-        !step1.nomorHp.trim() ||
-        !step1.email.trim()
-      ) {
-        setErrorBanner(
-          "Mohon lengkapi seluruh data Identitas Pemohon (pastikan NIK terdiri dari 16 digit).",
-        );
-        return false;
-      }
-    }
-
-    if (step === 2) {
-      if (
-        !step2.namaOrganisasi.trim() ||
-        !step2.jenisOrganisasi ||
-        !step2.nomorAktaPendirian.trim() ||
-        !step2.tanggalPendirian ||
-        !step2.alamatOrganisasi.trim() ||
-        !step2.namaKetua.trim() ||
-        !step2.nomorHpKetua.trim() ||
-        !step2.namaSekretaris.trim() ||
-        !step2.namaBendahara.trim()
-      ) {
-        setErrorBanner(
-          "Mohon lengkapi seluruh field wajib pada Identitas Organisasi/Lembaga.",
-        );
-        return false;
-      }
-    }
-
-    if (step === 3) {
-      if (
-        !step3.tahunPengajuan ||
-        !step3.bidangPengajuan ||
-        !step3.namaKegiatan.trim() ||
-        !step3.latarBelakang.trim() ||
-        !step3.maksudTujuan.trim() ||
-        !step3.jumlahDana.trim() ||
-        !step3.lokasiKegiatan.trim() ||
-        !step3.waktuPelaksanaan.trim() ||
-        !step3.manfaatKegiatan.trim()
+        !pengajuanForm.tahunPengajuan ||
+        !pengajuanForm.bidangPengajuan ||
+        !pengajuanForm.namaKegiatan.trim() ||
+        !pengajuanForm.latarBelakang.trim() ||
+        !pengajuanForm.maksudTujuan.trim() ||
+        !pengajuanForm.jumlahDana.trim() ||
+        !pengajuanForm.lokasiKegiatan.trim() ||
+        !pengajuanForm.waktuPelaksanaan.trim() ||
+        !pengajuanForm.manfaatKegiatan.trim()
       ) {
         setErrorBanner(
           "Mohon lengkapi seluruh rincian Informasi Pengajuan sebelum melanjutkan.",
@@ -408,7 +366,7 @@ export default function BuatPengajuanPage() {
       }
     }
 
-    if (step === 4) {
+    if (step === 2) {
       const missingDocs = DOC_REQUIREMENTS.filter(
         (doc) => doc.required && !documents[doc.key],
       );
@@ -425,7 +383,7 @@ export default function BuatPengajuanPage() {
 
   const handleNextStep = () => {
     if (!validateStep(currentStep)) return;
-    if (currentStep < 5) {
+    if (currentStep < 3) {
       setCurrentStep((prev) => (prev + 1) as StepId);
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
@@ -461,7 +419,7 @@ export default function BuatPengajuanPage() {
     setIsSubmitting(true);
     try {
       await new Promise((resolve) => setTimeout(resolve, 900));
-      router.push("/dashboard/pemohon/riwayat?submitted=true");
+      router.push("/dashboard/pemohon/riwayat-pengajuan?submitted=true");
     } catch {
       setErrorBanner(
         "Gagal mengirim pengajuan. Silakan periksa koneksi Anda dan coba kembali.",
@@ -494,8 +452,9 @@ export default function BuatPengajuanPage() {
             <h1 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
               Formulir Pengajuan Bantuan Hibah
             </h1>
-            <span className="px-2 py-0.5 rounded-full bg-app-secondary-100 text-app-secondary-800 text-[10px] font-extrabold">
-              Mode Preview Data Dummy
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold">
+              <BadgeCheck className="w-3 h-3" />
+              <span>Terhubung Data Profil</span>
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
@@ -522,18 +481,51 @@ export default function BuatPengajuanPage() {
       )}
 
       {/* =====================================================================
-          STEPPER PROGRESS BAR (BEBAS DIKLIK ANTAR STEP)
+          BANNER IDENTITAS PEMOHON & LEMBAGA DARI PROFIL
+      ====================================================================== */}
+      <div className="rounded-2xl bg-gradient-to-r from-app-primary-50/90 via-white to-slate-50 border border-app-primary-200/80 p-4 flex flex-col md:flex-row md:items-center justify-between gap-3.5 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3.5 min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-app-primary text-white flex items-center justify-center shrink-0">
+              <Building2 className="w-4 h-4 text-app-secondary" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-app-primary">
+                Lembaga & Pemohon Terdaftar
+              </p>
+              <p className="text-xs font-extrabold text-slate-900 truncate">
+                {PROFILE_DATA.organisasi.namaOrganisasi}
+              </p>
+              <p className="text-[11px] text-slate-600 truncate">
+                Pemohon: <strong>{PROFILE_DATA.pemohon.namaLengkap}</strong>{" "}
+                (NIK: {PROFILE_DATA.pemohon.nik})
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <Link
+          href="/dashboard/pemohon/profil"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-app-primary-50 border border-slate-200 hover:border-app-primary-200 text-[11px] font-bold text-app-primary transition-colors self-start md:self-auto shrink-0"
+        >
+          <span>Perbarui di Profil Saya</span>
+          <ExternalLink className="w-3 h-3" />
+        </Link>
+      </div>
+
+      {/* =====================================================================
+          STEPPER PROGRESS BAR (3 TAHAPAN INTI)
       ====================================================================== */}
       <div className="rounded-2xl bg-white border border-slate-200/80 p-4 sm:p-5 shadow-2xs">
-        <div className="grid grid-cols-5 gap-2 relative">
+        <div className="grid grid-cols-3 gap-2 relative max-w-2xl mx-auto">
           {/* Garis Penghubung Horizontal */}
           <div
             aria-hidden="true"
-            className="hidden sm:block absolute top-4.5 left-[10%] right-[10%] h-0.5 bg-slate-200"
+            className="absolute top-4.5 left-[16%] right-[16%] h-0.5 bg-slate-200"
           >
             <div
               className="h-full bg-app-primary transition-all duration-300"
-              style={{ width: `${((currentStep - 1) / 4) * 100}%` }}
+              style={{ width: `${((currentStep - 1) / 2) * 100}%` }}
             />
           </div>
 
@@ -569,7 +561,7 @@ export default function BuatPengajuanPage() {
                 </div>
 
                 <span
-                  className={`mt-2 text-[10px] sm:text-[11px] font-bold leading-tight transition-colors ${
+                  className={`mt-2 text-[10.5px] sm:text-xs font-bold leading-tight transition-colors ${
                     isActive
                       ? "text-app-primary"
                       : isCompleted
@@ -577,8 +569,8 @@ export default function BuatPengajuanPage() {
                         : "text-slate-500 group-hover:text-app-primary"
                   }`}
                 >
-                  <span className="hidden md:inline">{step.title}</span>
-                  <span className="md:hidden">{step.short}</span>
+                  <span className="hidden sm:inline">{step.title}</span>
+                  <span className="sm:hidden">{step.short}</span>
                 </span>
               </button>
             );
@@ -610,14 +602,14 @@ export default function BuatPengajuanPage() {
         <div className="px-5 py-4 bg-slate-50/80 border-b border-slate-100 flex items-center justify-between">
           <div>
             <span className="text-[10px] font-extrabold uppercase tracking-wider text-app-secondary-600">
-              Tahap {currentStep} dari 5
+              Tahap {currentStep} dari 3
             </span>
             <h2 className="text-sm sm:text-base font-extrabold text-slate-900">
               {STEPS[currentStep - 1].title}
             </h2>
           </div>
 
-          {currentStep === 4 && (
+          {currentStep === 2 && (
             <span className="px-2.5 py-1 rounded-full bg-app-primary-50 border border-app-primary-200 text-app-primary text-[10.5px] font-bold">
               Dokumen Wajib: {uploadedRequiredCount}/{requiredDocsCount}
             </span>
@@ -626,341 +618,21 @@ export default function BuatPengajuanPage() {
 
         <div className="p-5 sm:p-6">
           {/* -----------------------------------------------------------------
-              STEP 1: IDENTITAS PEMOHON
+              STEP 1: INFORMASI PENGAJUAN
           ------------------------------------------------------------------ */}
           {currentStep === 1 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-700">
-                  Nama Lengkap <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={step1.namaLengkap}
-                  onChange={(e) =>
-                    setStep1({ ...step1, namaLengkap: e.target.value })
-                  }
-                  placeholder="Masukkan nama lengkap sesuai KTP"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="block text-xs font-bold text-slate-700">
-                    NIK <span className="text-red-500">*</span>
-                  </label>
-                  <span className="text-[10px] text-slate-400">
-                    {step1.nik.length}/16 digit
-                  </span>
-                </div>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={step1.nik}
-                  onChange={(e) =>
-                    setStep1({
-                      ...step1,
-                      nik: e.target.value.replace(/\D/g, "").slice(0, 16),
-                    })
-                  }
-                  placeholder="16 digit NIK"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-700">
-                  Tempat Lahir <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={step1.tempatLahir}
-                  onChange={(e) =>
-                    setStep1({ ...step1, tempatLahir: e.target.value })
-                  }
-                  placeholder="Contoh: Sumbawa Besar"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700">
-                    Tanggal Lahir <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={step1.tanggalLahir}
-                    onChange={(e) =>
-                      setStep1({ ...step1, tanggalLahir: e.target.value })
-                    }
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700">
-                    Jenis Kelamin <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={step1.jenisKelamin}
-                    onChange={(e) =>
-                      setStep1({ ...step1, jenisKelamin: e.target.value })
-                    }
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
-                  >
-                    <option value="Laki-laki">Laki-laki</option>
-                    <option value="Perempuan">Perempuan</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-700">
-                  Nomor HP / WhatsApp <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="tel"
-                  value={step1.nomorHp}
-                  onChange={(e) =>
-                    setStep1({
-                      ...step1,
-                      nomorHp: e.target.value.replace(/\D/g, "").slice(0, 15),
-                    })
-                  }
-                  placeholder="0812xxxxxxxx"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-700">
-                  Email <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="email"
-                  value={step1.email}
-                  onChange={(e) =>
-                    setStep1({ ...step1, email: e.target.value })
-                  }
-                  placeholder="nama@email.com"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
-                />
-              </div>
-
-              <div className="sm:col-span-2 space-y-1.5">
-                <label className="block text-xs font-bold text-slate-700">
-                  Alamat Lengkap Pemohon <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  rows={2}
-                  value={step1.alamatLengkap}
-                  onChange={(e) =>
-                    setStep1({ ...step1, alamatLengkap: e.target.value })
-                  }
-                  placeholder="Jalan, RT/RW, Desa/Kelurahan, Kecamatan, Kabupaten Sumbawa"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* -----------------------------------------------------------------
-              STEP 2: IDENTITAS ORGANISASI / LEMBAGA
-          ------------------------------------------------------------------ */}
-          {currentStep === 2 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-700">
-                  Nama Organisasi / Lembaga{" "}
-                  <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={step2.namaOrganisasi}
-                  onChange={(e) =>
-                    setStep2({ ...step2, namaOrganisasi: e.target.value })
-                  }
-                  placeholder="Nama resmi lembaga sesuai akta/SK"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-700">
-                  Jenis Organisasi <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={step2.jenisOrganisasi}
-                  onChange={(e) =>
-                    setStep2({ ...step2, jenisOrganisasi: e.target.value })
-                  }
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
-                >
-                  <option value="Yayasan / Lembaga Keagamaan">
-                    Yayasan / Lembaga Keagamaan
-                  </option>
-                  <option value="Organisasi Kemasyarakatan (Ormas)">
-                    Organisasi Kemasyarakatan (Ormas)
-                  </option>
-                  <option value="Lembaga Pendidikan Non-Formal / TPQ / Ponpes">
-                    Lembaga Pendidikan Non-Formal / TPQ / Ponpes
-                  </option>
-                  <option value="Lembaga Sosial & Kemanusiaan">
-                    Lembaga Sosial & Kemanusiaan
-                  </option>
-                  <option value="Kelompok Masyarakat / Karang Taruna">
-                    Kelompok Masyarakat / Karang Taruna
-                  </option>
-                </select>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-700">
-                  Nomor Akta Pendirian <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={step2.nomorAktaPendirian}
-                  onChange={(e) =>
-                    setStep2({ ...step2, nomorAktaPendirian: e.target.value })
-                  }
-                  placeholder="Nomor Akta Notaris / AHU Kemenkumham"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700">
-                    Tanggal Pendirian <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={step2.tanggalPendirian}
-                    onChange={(e) =>
-                      setStep2({ ...step2, tanggalPendirian: e.target.value })
-                    }
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700">
-                    Nomor SK Organisasi{" "}
-                    <span className="text-[10px] font-normal text-slate-400">
-                      (Jika ada)
-                    </span>
-                  </label>
-                  <input
-                    type="text"
-                    value={step2.nomorSkOrganisasi}
-                    onChange={(e) =>
-                      setStep2({ ...step2, nomorSkOrganisasi: e.target.value })
-                    }
-                    placeholder="Nomor SK Pengurus"
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
-                  />
-                </div>
-              </div>
-
-              <div className="sm:col-span-2 space-y-1.5">
-                <label className="block text-xs font-bold text-slate-700">
-                  Alamat Organisasi / Sekretariat{" "}
-                  <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  rows={2}
-                  value={step2.alamatOrganisasi}
-                  onChange={(e) =>
-                    setStep2({ ...step2, alamatOrganisasi: e.target.value })
-                  }
-                  placeholder="Alamat sekretariat resmi di wilayah Kabupaten Sumbawa"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-700">
-                  Nama Ketua / Pimpinan <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={step2.namaKetua}
-                  onChange={(e) =>
-                    setStep2({ ...step2, namaKetua: e.target.value })
-                  }
-                  placeholder="Nama lengkap ketua"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-700">
-                  Nomor HP Ketua <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="tel"
-                  value={step2.nomorHpKetua}
-                  onChange={(e) =>
-                    setStep2({
-                      ...step2,
-                      nomorHpKetua: e.target.value
-                        .replace(/\D/g, "")
-                        .slice(0, 15),
-                    })
-                  }
-                  placeholder="0812xxxxxxxx"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-700">
-                  Nama Sekretaris <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={step2.namaSekretaris}
-                  onChange={(e) =>
-                    setStep2({ ...step2, namaSekretaris: e.target.value })
-                  }
-                  placeholder="Nama lengkap sekretaris"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-700">
-                  Nama Bendahara <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={step2.namaBendahara}
-                  onChange={(e) =>
-                    setStep2({ ...step2, namaBendahara: e.target.value })
-                  }
-                  placeholder="Nama lengkap bendahara"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* -----------------------------------------------------------------
-              STEP 3: INFORMASI PENGAJUAN
-          ------------------------------------------------------------------ */}
-          {currentStep === 3 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold text-slate-700">
                   Tahun Pengajuan <span className="text-red-500">*</span>
                 </label>
                 <select
-                  value={step3.tahunPengajuan}
+                  value={pengajuanForm.tahunPengajuan}
                   onChange={(e) =>
-                    setStep3({ ...step3, tahunPengajuan: e.target.value })
+                    setPengajuanForm({
+                      ...pengajuanForm,
+                      tahunPengajuan: e.target.value,
+                    })
                   }
                   className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
                 >
@@ -974,9 +646,12 @@ export default function BuatPengajuanPage() {
                   Bidang Pengajuan <span className="text-red-500">*</span>
                 </label>
                 <select
-                  value={step3.bidangPengajuan}
+                  value={pengajuanForm.bidangPengajuan}
                   onChange={(e) =>
-                    setStep3({ ...step3, bidangPengajuan: e.target.value })
+                    setPengajuanForm({
+                      ...pengajuanForm,
+                      bidangPengajuan: e.target.value,
+                    })
                   }
                   className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
                 >
@@ -1002,9 +677,12 @@ export default function BuatPengajuanPage() {
                 </label>
                 <input
                   type="text"
-                  value={step3.namaKegiatan}
+                  value={pengajuanForm.namaKegiatan}
                   onChange={(e) =>
-                    setStep3({ ...step3, namaKegiatan: e.target.value })
+                    setPengajuanForm({
+                      ...pengajuanForm,
+                      namaKegiatan: e.target.value,
+                    })
                   }
                   placeholder="Contoh: Permohonan Bantuan Rehabilitasi Ruang Belajar TPQ"
                   className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
@@ -1023,10 +701,10 @@ export default function BuatPengajuanPage() {
                   <input
                     type="text"
                     inputMode="numeric"
-                    value={step3.jumlahDana}
+                    value={pengajuanForm.jumlahDana}
                     onChange={(e) =>
-                      setStep3({
-                        ...step3,
+                      setPengajuanForm({
+                        ...pengajuanForm,
                         jumlahDana: formatRupiahInput(e.target.value),
                       })
                     }
@@ -1042,9 +720,12 @@ export default function BuatPengajuanPage() {
                 </label>
                 <input
                   type="text"
-                  value={step3.waktuPelaksanaan}
+                  value={pengajuanForm.waktuPelaksanaan}
                   onChange={(e) =>
-                    setStep3({ ...step3, waktuPelaksanaan: e.target.value })
+                    setPengajuanForm({
+                      ...pengajuanForm,
+                      waktuPelaksanaan: e.target.value,
+                    })
                   }
                   placeholder="Contoh: Maret – Mei 2027"
                   className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
@@ -1057,9 +738,12 @@ export default function BuatPengajuanPage() {
                 </label>
                 <input
                   type="text"
-                  value={step3.lokasiKegiatan}
+                  value={pengajuanForm.lokasiKegiatan}
                   onChange={(e) =>
-                    setStep3({ ...step3, lokasiKegiatan: e.target.value })
+                    setPengajuanForm({
+                      ...pengajuanForm,
+                      lokasiKegiatan: e.target.value,
+                    })
                   }
                   placeholder="Desa/Kelurahan dan Kecamatan lokasi pelaksanaan kegiatan"
                   className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
@@ -1072,9 +756,12 @@ export default function BuatPengajuanPage() {
                 </label>
                 <textarea
                   rows={3}
-                  value={step3.latarBelakang}
+                  value={pengajuanForm.latarBelakang}
                   onChange={(e) =>
-                    setStep3({ ...step3, latarBelakang: e.target.value })
+                    setPengajuanForm({
+                      ...pengajuanForm,
+                      latarBelakang: e.target.value,
+                    })
                   }
                   placeholder="Uraikan kondisi saat ini dan urgensi pengajuan bantuan hibah..."
                   className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
@@ -1087,9 +774,12 @@ export default function BuatPengajuanPage() {
                 </label>
                 <textarea
                   rows={2}
-                  value={step3.maksudTujuan}
+                  value={pengajuanForm.maksudTujuan}
                   onChange={(e) =>
-                    setStep3({ ...step3, maksudTujuan: e.target.value })
+                    setPengajuanForm({
+                      ...pengajuanForm,
+                      maksudTujuan: e.target.value,
+                    })
                   }
                   placeholder="Jelaskan sasaran serta target yang ingin dicapai..."
                   className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
@@ -1102,9 +792,12 @@ export default function BuatPengajuanPage() {
                 </label>
                 <textarea
                   rows={2}
-                  value={step3.manfaatKegiatan}
+                  value={pengajuanForm.manfaatKegiatan}
                   onChange={(e) =>
-                    setStep3({ ...step3, manfaatKegiatan: e.target.value })
+                    setPengajuanForm({
+                      ...pengajuanForm,
+                      manfaatKegiatan: e.target.value,
+                    })
                   }
                   placeholder="Uraikan dampak manfaat bagi masyarakat / anggota lembaga..."
                   className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
@@ -1114,11 +807,10 @@ export default function BuatPengajuanPage() {
           )}
 
           {/* -----------------------------------------------------------------
-              STEP 4: UPLOAD DOKUMEN
+              STEP 2: UPLOAD DOKUMEN
           ------------------------------------------------------------------ */}
-          {currentStep === 4 && (
+          {currentStep === 2 && (
             <div className="space-y-4">
-              {/* Catatan Ketentuan Bagian Kesra */}
               <div className="flex items-start gap-2.5 rounded-xl bg-app-primary-50/80 border border-app-primary-200/80 p-3.5 text-[11.5px] text-app-primary-900">
                 <Info className="w-4 h-4 text-app-primary shrink-0 mt-0.5" />
                 <p className="leading-relaxed">
@@ -1131,7 +823,6 @@ export default function BuatPengajuanPage() {
                 </p>
               </div>
 
-              {/* Daftar 7 Slot Upload Dokumen */}
               <div className="space-y-3">
                 {DOC_REQUIREMENTS.map((req, idx) => {
                   const uploaded = documents[req.key];
@@ -1146,7 +837,6 @@ export default function BuatPengajuanPage() {
                       }`}
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        {/* Info Dokumen & Indikator Kelengkapan */}
                         <div className="space-y-1 min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="text-[11px] font-extrabold text-slate-400">
@@ -1156,7 +846,6 @@ export default function BuatPengajuanPage() {
                               {req.label}
                             </h3>
 
-                            {/* Indikator Kelengkapan */}
                             {uploaded ? (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[9.5px] font-bold">
                                 <CheckCircle2 className="w-3 h-3 text-emerald-600" />
@@ -1173,7 +862,6 @@ export default function BuatPengajuanPage() {
                             )}
                           </div>
 
-                          {/* Informasi Format & Ukuran Maksimal */}
                           <p className="text-[10.5px] text-slate-500">
                             Format:{" "}
                             <strong className="text-slate-700">
@@ -1186,7 +874,6 @@ export default function BuatPengajuanPage() {
                             {req.note && ` — ${req.note}`}
                           </p>
 
-                          {/* Info File Terunggah */}
                           {uploaded && (
                             <div className="inline-flex items-center gap-2 pt-1 text-[11px] font-semibold text-app-primary">
                               <FileCheck2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
@@ -1200,7 +887,6 @@ export default function BuatPengajuanPage() {
                           )}
                         </div>
 
-                        {/* Tombol Aksi Upload / Preview / Ganti / Hapus */}
                         <div className="flex items-center gap-1.5 shrink-0">
                           <input
                             ref={(el) => {
@@ -1272,49 +958,46 @@ export default function BuatPengajuanPage() {
           )}
 
           {/* -----------------------------------------------------------------
-              STEP 5: REVIEW DAN KIRIM
+              STEP 3: REVIEW DAN KIRIM
           ------------------------------------------------------------------ */}
-          {currentStep === 5 && (
+          {currentStep === 3 && (
             <div className="space-y-5">
-              {/* 1. Rangkuman Identitas Pemohon */}
+              {/* 1. Data Pemohon (Otomatis dari Profil) */}
               <div className="rounded-2xl border border-slate-200/80 overflow-hidden">
                 <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
-                  <span className="text-xs font-extrabold text-slate-800">
-                    1. Identitas Pemohon
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setCurrentStep(1)}
-                    className="text-[11px] font-bold text-app-primary hover:underline cursor-pointer"
+                  <div className="flex items-center gap-2">
+                    <User className="w-3.5 h-3.5 text-app-primary" />
+                    <span className="text-xs font-extrabold text-slate-800">
+                      1. Identitas Pemohon (Dari Profil)
+                    </span>
+                  </div>
+                  <Link
+                    href="/dashboard/pemohon/profil"
+                    className="text-[11px] font-bold text-app-primary hover:underline"
                   >
-                    Ubah
-                  </button>
+                    Edit di Profil
+                  </Link>
                 </div>
                 <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                   <div>
                     <p className="text-[10.5px] text-slate-400">Nama Lengkap</p>
                     <p className="font-bold text-slate-800">
-                      {step1.namaLengkap}
+                      {PROFILE_DATA.pemohon.namaLengkap}
                     </p>
                   </div>
                   <div>
                     <p className="text-[10.5px] text-slate-400">NIK</p>
-                    <p className="font-bold text-slate-800">{step1.nik}</p>
+                    <p className="font-bold text-slate-800">
+                      {PROFILE_DATA.pemohon.nik}
+                    </p>
                   </div>
                   <div>
                     <p className="text-[10.5px] text-slate-400">
                       Tempat, Tanggal Lahir
                     </p>
                     <p className="font-semibold text-slate-800">
-                      {step1.tempatLahir}, {step1.tanggalLahir}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10.5px] text-slate-400">
-                      Jenis Kelamin
-                    </p>
-                    <p className="font-semibold text-slate-800">
-                      {step1.jenisKelamin}
+                      {PROFILE_DATA.pemohon.tempatLahir},{" "}
+                      {PROFILE_DATA.pemohon.tanggalLahir}
                     </p>
                   </div>
                   <div>
@@ -1322,33 +1005,36 @@ export default function BuatPengajuanPage() {
                       Nomor HP / Email
                     </p>
                     <p className="font-semibold text-slate-800">
-                      {step1.nomorHp} • {step1.email}
+                      {PROFILE_DATA.pemohon.nomorHp} •{" "}
+                      {PROFILE_DATA.pemohon.email}
                     </p>
                   </div>
-                  <div>
+                  <div className="sm:col-span-2">
                     <p className="text-[10.5px] text-slate-400">
-                      Alamat Lengkap
+                      Alamat Lengkap Pemohon
                     </p>
                     <p className="font-semibold text-slate-800">
-                      {step1.alamatLengkap}
+                      {PROFILE_DATA.pemohon.alamatLengkap}
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* 2. Rangkuman Identitas Organisasi */}
+              {/* 2. Data Organisasi / Lembaga (Otomatis dari Profil) */}
               <div className="rounded-2xl border border-slate-200/80 overflow-hidden">
                 <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
-                  <span className="text-xs font-extrabold text-slate-800">
-                    2. Identitas Organisasi / Lembaga
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setCurrentStep(2)}
-                    className="text-[11px] font-bold text-app-primary hover:underline cursor-pointer"
+                  <div className="flex items-center gap-2">
+                    <Building2 className="w-3.5 h-3.5 text-app-primary" />
+                    <span className="text-xs font-extrabold text-slate-800">
+                      2. Identitas Organisasi / Lembaga (Dari Profil)
+                    </span>
+                  </div>
+                  <Link
+                    href="/dashboard/pemohon/profil"
+                    className="text-[11px] font-bold text-app-primary hover:underline"
                   >
-                    Ubah
-                  </button>
+                    Edit di Profil
+                  </Link>
                 </div>
                 <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                   <div>
@@ -1356,7 +1042,7 @@ export default function BuatPengajuanPage() {
                       Nama Organisasi
                     </p>
                     <p className="font-bold text-slate-800">
-                      {step2.namaOrganisasi}
+                      {PROFILE_DATA.organisasi.namaOrganisasi}
                     </p>
                   </div>
                   <div>
@@ -1364,7 +1050,7 @@ export default function BuatPengajuanPage() {
                       Jenis Organisasi
                     </p>
                     <p className="font-semibold text-slate-800">
-                      {step2.jenisOrganisasi}
+                      {PROFILE_DATA.organisasi.jenisOrganisasi}
                     </p>
                   </div>
                   <div>
@@ -1372,7 +1058,8 @@ export default function BuatPengajuanPage() {
                       Nomor & Tanggal Akta
                     </p>
                     <p className="font-semibold text-slate-800">
-                      {step2.nomorAktaPendirian} ({step2.tanggalPendirian})
+                      {PROFILE_DATA.organisasi.nomorAktaPendirian} (
+                      {PROFILE_DATA.organisasi.tanggalPendirian})
                     </p>
                   </div>
                   <div>
@@ -1380,7 +1067,7 @@ export default function BuatPengajuanPage() {
                       Nomor SK Organisasi
                     </p>
                     <p className="font-semibold text-slate-800">
-                      {step2.nomorSkOrganisasi || "-"}
+                      {PROFILE_DATA.organisasi.nomorSkOrganisasi || "-"}
                     </p>
                   </div>
                   <div>
@@ -1388,7 +1075,8 @@ export default function BuatPengajuanPage() {
                       Ketua / Pimpinan
                     </p>
                     <p className="font-semibold text-slate-800">
-                      {step2.namaKetua} ({step2.nomorHpKetua})
+                      {PROFILE_DATA.organisasi.namaKetua} (
+                      {PROFILE_DATA.organisasi.nomorHpKetua})
                     </p>
                   </div>
                   <div>
@@ -1396,7 +1084,8 @@ export default function BuatPengajuanPage() {
                       Sekretaris & Bendahara
                     </p>
                     <p className="font-semibold text-slate-800">
-                      {step2.namaSekretaris} / {step2.namaBendahara}
+                      {PROFILE_DATA.organisasi.namaSekretaris} /{" "}
+                      {PROFILE_DATA.organisasi.namaBendahara}
                     </p>
                   </div>
                   <div className="sm:col-span-2">
@@ -1404,7 +1093,7 @@ export default function BuatPengajuanPage() {
                       Alamat Organisasi
                     </p>
                     <p className="font-semibold text-slate-800">
-                      {step2.alamatOrganisasi}
+                      {PROFILE_DATA.organisasi.alamatOrganisasi}
                     </p>
                   </div>
                 </div>
@@ -1418,7 +1107,7 @@ export default function BuatPengajuanPage() {
                   </span>
                   <button
                     type="button"
-                    onClick={() => setCurrentStep(3)}
+                    onClick={() => setCurrentStep(1)}
                     className="text-[11px] font-bold text-app-primary hover:underline cursor-pointer"
                   >
                     Ubah
@@ -1430,7 +1119,8 @@ export default function BuatPengajuanPage() {
                       Tahun & Bidang Pengajuan
                     </p>
                     <p className="font-bold text-slate-800">
-                      TA {step3.tahunPengajuan} • {step3.bidangPengajuan}
+                      TA {pengajuanForm.tahunPengajuan} •{" "}
+                      {pengajuanForm.bidangPengajuan}
                     </p>
                   </div>
                   <div>
@@ -1438,7 +1128,7 @@ export default function BuatPengajuanPage() {
                       Jumlah Dana Dimohon
                     </p>
                     <p className="font-extrabold text-app-primary text-sm">
-                      Rp {step3.jumlahDana}
+                      Rp {pengajuanForm.jumlahDana}
                     </p>
                   </div>
                   <div className="sm:col-span-2">
@@ -1446,7 +1136,7 @@ export default function BuatPengajuanPage() {
                       Nama Kegiatan
                     </p>
                     <p className="font-bold text-slate-800">
-                      {step3.namaKegiatan}
+                      {pengajuanForm.namaKegiatan}
                     </p>
                   </div>
                   <div>
@@ -1454,7 +1144,7 @@ export default function BuatPengajuanPage() {
                       Lokasi Kegiatan
                     </p>
                     <p className="font-semibold text-slate-800">
-                      {step3.lokasiKegiatan}
+                      {pengajuanForm.lokasiKegiatan}
                     </p>
                   </div>
                   <div>
@@ -1462,7 +1152,7 @@ export default function BuatPengajuanPage() {
                       Waktu Pelaksanaan
                     </p>
                     <p className="font-semibold text-slate-800">
-                      {step3.waktuPelaksanaan}
+                      {pengajuanForm.waktuPelaksanaan}
                     </p>
                   </div>
                   <div className="sm:col-span-2">
@@ -1470,7 +1160,7 @@ export default function BuatPengajuanPage() {
                       Latar Belakang
                     </p>
                     <p className="text-slate-700 leading-relaxed">
-                      {step3.latarBelakang}
+                      {pengajuanForm.latarBelakang}
                     </p>
                   </div>
                   <div className="sm:col-span-2">
@@ -1478,7 +1168,7 @@ export default function BuatPengajuanPage() {
                       Maksud dan Tujuan
                     </p>
                     <p className="text-slate-700 leading-relaxed">
-                      {step3.maksudTujuan}
+                      {pengajuanForm.maksudTujuan}
                     </p>
                   </div>
                   <div className="sm:col-span-2">
@@ -1486,7 +1176,7 @@ export default function BuatPengajuanPage() {
                       Manfaat Kegiatan
                     </p>
                     <p className="text-slate-700 leading-relaxed">
-                      {step3.manfaatKegiatan}
+                      {pengajuanForm.manfaatKegiatan}
                     </p>
                   </div>
                 </div>
@@ -1500,7 +1190,7 @@ export default function BuatPengajuanPage() {
                   </span>
                   <button
                     type="button"
-                    onClick={() => setCurrentStep(4)}
+                    onClick={() => setCurrentStep(2)}
                     className="text-[11px] font-bold text-app-primary hover:underline cursor-pointer"
                   >
                     Kelola Dokumen
@@ -1563,8 +1253,8 @@ export default function BuatPengajuanPage() {
                   />
                   <span className="text-[11.5px] text-slate-700 leading-relaxed">
                     Saya menyatakan dengan sebenar-benarnya bahwa seluruh data
-                    dan dokumen yang diisikan serta diunggah dalam permohonan
-                    bantuan hibah ini adalah sah, akurat, dan dapat
+                    profil, rincian kegiatan, dan dokumen yang diunggah dalam
+                    permohonan bantuan hibah ini adalah sah, akurat, dan dapat
                     dipertanggungjawabkan sesuai ketentuan peraturan
                     perundang-undangan yang berlaku di Pemerintah Kabupaten
                     Sumbawa.
@@ -1593,7 +1283,7 @@ export default function BuatPengajuanPage() {
             <div />
           )}
 
-          {currentStep < 5 ? (
+          {currentStep < 3 ? (
             <button
               type="button"
               onClick={handleNextStep}
