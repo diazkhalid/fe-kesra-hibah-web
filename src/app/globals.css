@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+.debug {
+  background-color: red;
+}
+
+@theme {
+  /* App Primary (Modern Deep Teal - Segar, Profesional & Terpercaya) */
+  --color-app-primary: #0f766e;
+  --color-app-primary-50: #f0fdfa;
+  --color-app-primary-100: #ccfbf1;
+  --color-app-primary-200: #99f6e4;
+  --color-app-primary-300: #5eead4;
+  --color-app-primary-400: #2dd4bf;
+  --color-app-primary-500: #14b8a6;
+  --color-app-primary-600: #0d9488;
+  --color-app-primary-700: #0f766e;
+  --color-app-primary-800: #115e59;
+  --color-app-primary-900: #134e4a;
+  --color-app-primary-950: #042f2e;
+
+  /* App Secondary (Warm Sunset Amber / Coral Gold - Hangat & Kontras) */
+  --color-app-secondary: #f59e0b;
+  --color-app-secondary-50: #fffbeb;
+  --color-app-secondary-100: #fef3c7;
+  --color-app-secondary-200: #fde68a;
+  --color-app-secondary-300: #fcd34d;
+  --color-app-secondary-400: #fbbf24;
+  --color-app-secondary-500: #f59e0b;
+  --color-app-secondary-600: #d97706;
+  --color-app-secondary-700: #b45309;
+  --color-app-secondary-800: #92400e;
+  --color-app-secondary-900: #78350f;
+  --color-app-secondary-950: #451a03;
+}
