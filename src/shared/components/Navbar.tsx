@@ -156,7 +156,7 @@ export default function Navbar() {
             </Link>
 
             <Link
-              href="/daftar-pengajuan"
+              href="/register"
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold text-white bg-app-primary hover:bg-app-primary-800 shadow-xs transition-all duration-150 group"
             >
               <span>Daftar Pengajuan</span>
