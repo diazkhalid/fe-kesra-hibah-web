@@ -17,47 +17,46 @@ import {
   FileCheck2,
   Activity,
 } from "lucide-react";
+import { useAuth } from "@/features/auth/hooks/useAuth.hook";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login, isLoading, error: authError, clearError } = useAuth();
 
-  const [identifier, setIdentifier] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  const errorMessage = validationError || authError;
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setErrorMessage(null);
+    setValidationError(null);
+    clearError();
 
-    if (!identifier.trim() || !password.trim()) {
-      setErrorMessage("Email/username dan password wajib diisi.");
+    if (!email.trim() || !password.trim()) {
+      setValidationError("Email dan password wajib diisi.");
       return;
     }
 
-    setIsLoading(true);
-    try {
-      // Simulasi proses autentikasi kredensial
-      await new Promise((resolve) => setTimeout(resolve, 900));
-      router.push("/dashboard/pemohon");
-    } catch {
-      setErrorMessage("Email/username atau password tidak sesuai.");
-    } finally {
-      setIsLoading(false);
-    }
+    await login({
+      email: email.trim(),
+      password,
+    });
   };
 
   const handleGoogleLogin = async () => {
-    setErrorMessage(null);
+    setValidationError(null);
+    clearError();
     setIsGoogleLoading(true);
     try {
       // Hubungkan dengan NextAuth signIn("google") atau OAuth provider Anda
       await new Promise((resolve) => setTimeout(resolve, 900));
       router.push("/dashboard/admin");
     } catch {
-      setErrorMessage("Gagal menghubungkan dengan akun Google.");
+      setValidationError("Gagal menghubungkan dengan akun Google.");
     } finally {
       setIsGoogleLoading(false);
     }
@@ -102,8 +101,8 @@ export default function LoginPage() {
               Selamat Datang Kembali
             </h1>
             <p className="text-xs text-slate-500 leading-relaxed">
-              Masuk menggunakan email/username yang terdaftar pada layanan
-              pengajuan hibah Kabupaten Sumbawa.
+              Masuk menggunakan email yang terdaftar pada layanan pengajuan
+              hibah Kabupaten Sumbawa.
             </p>
           </div>
 
@@ -120,28 +119,28 @@ export default function LoginPage() {
 
           {/* Form Kredensial Utama */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Email / Username */}
+            {/* Email */}
             <div className="space-y-1.5">
               <label
-                htmlFor="identifier"
+                htmlFor="email"
                 className="block text-xs font-bold text-slate-700"
               >
-                Email atau Username
+                Email
               </label>
               <div className="relative">
                 <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
                   <Mail className="w-4 h-4" />
                 </span>
                 <input
-                  id="identifier"
-                  name="identifier"
-                  type="text"
-                  autoComplete="username"
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
                   required
                   disabled={isBusy}
-                  value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
-                  placeholder="nama@lembaga.org atau username"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="nama@email.com"
                   className="w-full rounded-xl border border-slate-200 bg-slate-50/60 pl-10 pr-3.5 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15 disabled:opacity-60 transition-all"
                 />
               </div>

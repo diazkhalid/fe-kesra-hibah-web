@@ -24,6 +24,18 @@ export async function login(payload: UserLoginDto) {
   }
 }
 
+export async function verifyEmail(token: string) {
+  try {
+    const response = await axios.get(API_ENDPOINT.AUTH.VERIFY_EMAIL, {
+      params: { token },
+    });
+    return response;
+  } catch (error) {
+    console.log(error);
+    return handleServiceError(error);
+  }
+}
+
 export async function me(token: string) {
   try {
     const response = await axios.get(API_ENDPOINT.AUTH.ME, {
