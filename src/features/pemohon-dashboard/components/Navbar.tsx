@@ -5,8 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
-  Landmark,
   Bell,
+  BellOff,
   ChevronDown,
   UserCircle2,
   LogOut,
@@ -16,6 +16,7 @@ import {
   Loader2,
   ExternalLink,
 } from "lucide-react";
+import { useAuthUser } from "@/shared/contexts/SessionContext";
 
 interface NotificationPreview {
   id: string;
@@ -26,60 +27,30 @@ interface NotificationPreview {
   type: "success" | "warning" | "info";
 }
 
-interface PemohonNavbarProps {
-  userName?: string;
-  organizationName?: string;
-  email?: string;
-  avatarUrl?: string | null;
-  unreadNotifications?: number;
-}
+const SAMPLE_NOTIFICATIONS: NotificationPreview[] = [];
 
-const SAMPLE_NOTIFICATIONS: NotificationPreview[] = [
-  {
-    id: "1",
-    title: "Berkas Proposal Diterima",
-    description:
-      "Proposal Bantuan Sarana Ibadah telah masuk antrean verifikasi.",
-    time: "15 menit lalu",
-    isUnread: true,
-    type: "info",
-  },
-  {
-    id: "2",
-    title: "Verifikasi Administrasi Selesai",
-    description:
-      "Dokumen legalitas lembaga dinyatakan lengkap oleh Admin Kesra.",
-    time: "2 jam lalu",
-    isUnread: true,
-    type: "success",
-  },
-  {
-    id: "3",
-    title: "Pengingat Kelengkapan RAB",
-    description: "Pastikan rincian anggaran telah ditandatangani pengurus.",
-    time: "1 hari lalu",
-    isUnread: false,
-    type: "warning",
-  },
-];
-
-export default function PemohonNavbar({
-  userName = "Ahmad Fauzi",
-  organizationName = "Yayasan Nurul Iman Sumbawa",
-  email = "ahmad.fauzi@nuruliman.or.id",
-  avatarUrl = null,
-  unreadNotifications = 2,
-}: PemohonNavbarProps) {
+export default function PemohonNavbar() {
   const router = useRouter();
+  const { user, isLoading: isAuthLoading } = useAuthUser();
 
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [notifications] = useState<NotificationPreview[]>(SAMPLE_NOTIFICATIONS);
 
   const notifRef = useRef<HTMLDivElement>(null);
   const accountRef = useRef<HTMLDivElement>(null);
 
-  // Tutup dropdown saat klik di luar area menu
+  const displayName =
+    user?.full_name || (isAuthLoading ? "Memuat..." : "Pemohon");
+  const displayEmail = user?.email || "-";
+  const displayAvatar = user?.profile?.profile_photo_url || null;
+  const roleName = user?.role || "User";
+
+  const unreadNotifications = notifications.filter(
+    (item) => item.isUnread,
+  ).length;
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -103,16 +74,17 @@ export default function PemohonNavbar({
   const handleLogout = async () => {
     setIsLoggingOut(true);
     try {
-      // Hubungkan dengan endpoint logout / signOut() Anda
+      localStorage.removeItem("access-token");
       await new Promise((resolve) => setTimeout(resolve, 600));
-      router.push("/login");
+      window.location.href = "/login";
     } finally {
       setIsLoggingOut(false);
     }
   };
 
-  const userInitials = userName
-    .split(" ")
+  const userInitials = displayName
+    .trim()
+    .split(/\s+/)
     .slice(0, 2)
     .map((part) => part[0])
     .join("")
@@ -161,62 +133,79 @@ export default function PemohonNavbar({
                       </span>
                     )}
                   </div>
-                  <Link
-                    href="/dashboard/pemohon/notifikasi"
-                    onClick={() => setIsNotifOpen(false)}
-                    className="text-[10.5px] font-semibold text-app-primary hover:underline underline-offset-4"
-                  >
-                    Lihat Semua
-                  </Link>
-                </div>
-
-                <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto">
-                  {SAMPLE_NOTIFICATIONS.map((notif) => (
+                  {notifications.length > 0 && (
                     <Link
-                      key={notif.id}
                       href="/dashboard/pemohon/notifikasi"
                       onClick={() => setIsNotifOpen(false)}
-                      className={`flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-colors ${
-                        notif.isUnread ? "bg-app-primary-50/30" : ""
-                      }`}
+                      className="text-[10.5px] font-semibold text-app-primary hover:underline underline-offset-4"
                     >
-                      <div
-                        className={`mt-0.5 w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-                          notif.type === "success"
-                            ? "bg-emerald-50 text-emerald-600"
-                            : notif.type === "warning"
-                              ? "bg-app-secondary-50 text-app-secondary-600"
-                              : "bg-sky-50 text-sky-600"
+                      Lihat Semua
+                    </Link>
+                  )}
+                </div>
+
+                {notifications.length > 0 ? (
+                  <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto">
+                    {notifications.map((notif) => (
+                      <Link
+                        key={notif.id}
+                        href="/dashboard/pemohon/notifikasi"
+                        onClick={() => setIsNotifOpen(false)}
+                        className={`flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-colors ${
+                          notif.isUnread ? "bg-app-primary-50/30" : ""
                         }`}
                       >
-                        {notif.type === "success" ? (
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                        ) : notif.type === "warning" ? (
-                          <Clock className="w-3.5 h-3.5" />
-                        ) : (
-                          <FileText className="w-3.5 h-3.5" />
-                        )}
-                      </div>
-
-                      <div className="min-w-0 flex-1 space-y-0.5">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-[11.5px] font-bold text-slate-800 truncate">
-                            {notif.title}
-                          </p>
-                          {notif.isUnread && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-app-primary shrink-0" />
+                        <div
+                          className={`mt-0.5 w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                            notif.type === "success"
+                              ? "bg-emerald-50 text-emerald-600"
+                              : notif.type === "warning"
+                                ? "bg-app-secondary-50 text-app-secondary-600"
+                                : "bg-sky-50 text-sky-600"
+                          }`}
+                        >
+                          {notif.type === "success" ? (
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                          ) : notif.type === "warning" ? (
+                            <Clock className="w-3.5 h-3.5" />
+                          ) : (
+                            <FileText className="w-3.5 h-3.5" />
                           )}
                         </div>
-                        <p className="text-[10.5px] text-slate-500 line-clamp-2 leading-snug">
-                          {notif.description}
-                        </p>
-                        <p className="text-[9.5px] font-medium text-slate-400 pt-0.5">
-                          {notif.time}
-                        </p>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
+
+                        <div className="min-w-0 flex-1 space-y-0.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-[11.5px] font-bold text-slate-800 truncate">
+                              {notif.title}
+                            </p>
+                            {notif.isUnread && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-app-primary shrink-0" />
+                            )}
+                          </div>
+                          <p className="text-[10.5px] text-slate-500 line-clamp-2 leading-snug">
+                            {notif.description}
+                          </p>
+                          <p className="text-[9.5px] font-medium text-slate-400 pt-0.5">
+                            {notif.time}
+                          </p>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="px-6 py-9 flex flex-col items-center justify-center text-center">
+                    <div className="w-11 h-11 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mb-3">
+                      <BellOff className="w-5 h-5" />
+                    </div>
+                    <p className="text-xs font-bold text-slate-700">
+                      Belum Ada Notifikasi
+                    </p>
+                    <p className="text-[11px] text-slate-400 mt-1 max-w-[220px] leading-relaxed">
+                      Informasi terkait status pengajuan dan verifikasi proposal
+                      akan muncul di sini.
+                    </p>
+                  </div>
+                )}
 
                 <div className="p-2.5 bg-slate-50/80 border-t border-slate-100">
                   <Link
@@ -253,10 +242,10 @@ export default function PemohonNavbar({
             >
               {/* Foto Profil / Avatar */}
               <div className="relative w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-app-primary to-app-primary-700 text-white flex items-center justify-center shrink-0 ring-2 ring-white shadow-2xs">
-                {avatarUrl ? (
+                {displayAvatar ? (
                   <Image
-                    src={avatarUrl}
-                    alt={userName}
+                    src={displayAvatar}
+                    alt={displayName}
                     fill
                     className="object-cover"
                   />
@@ -270,10 +259,10 @@ export default function PemohonNavbar({
               {/* Nama Pengguna & Peran */}
               <div className="hidden sm:flex flex-col text-left max-w-[150px]">
                 <span className="text-xs font-bold text-slate-800 truncate leading-tight">
-                  {userName}
+                  {displayName}
                 </span>
                 <span className="text-[10px] font-medium text-slate-500 truncate leading-tight mt-0.5">
-                  Pemohon Hibah
+                  {roleName}
                 </span>
               </div>
 
@@ -290,13 +279,13 @@ export default function PemohonNavbar({
                 {/* Info Akun di Atas Dropdown */}
                 <div className="px-4 py-3.5 bg-gradient-to-br from-app-primary-950 via-app-primary-900 to-app-primary text-white">
                   <p className="text-xs font-extrabold text-white truncate">
-                    {userName}
+                    {displayName}
                   </p>
                   <p className="text-[10.5px] font-medium text-app-secondary-300 truncate mt-0.5">
-                    {organizationName}
+                    {roleName}
                   </p>
                   <p className="text-[10px] text-app-primary-200 truncate mt-1">
-                    {email}
+                    {displayEmail}
                   </p>
                 </div>
 

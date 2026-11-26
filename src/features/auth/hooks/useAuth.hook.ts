@@ -4,12 +4,16 @@ import { UserLoginDto } from "../types/login.type";
 import { UserRegisterDto } from "../types/register.type";
 import { useToast } from "@/shared/contexts/ToastContext";
 import { useRouter } from "next/navigation";
+import { useLocalStorage } from "@/shared/hooks/useLocalStorage";
+import { useAuthUser } from "@/shared/contexts/SessionContext";
 
 export function useAuth() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const { addToast } = useToast();
   const router = useRouter();
+  const { setToggleUpdateAuth, toggleUpdate } = useAuthUser();
+  const [token, setToken] = useLocalStorage("access-token", null);
 
   const clearError = () => setError(null);
 
@@ -34,7 +38,10 @@ export function useAuth() {
       }
 
       clearError();
-      router.push("/dashboard/pemohon");
+      setToggleUpdateAuth(!toggleUpdate);
+      setToken(result.data.data.token);
+      addToast("Berhasil login!", "success");
+      router.push("/dashboard");
     } finally {
       setIsLoading(false);
     }

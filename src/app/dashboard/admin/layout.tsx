@@ -14,13 +14,7 @@ export default function AdminDashboardLayout({
 
       {/* Kolom Kanan: Navbar Admin + Konten Utama */}
       <div className="flex-1 flex flex-col min-w-0">
-        <AdminNavbar
-          adminName="H. Muhammad Zainuddin, S.Sos."
-          adminRole="Verifikator Bagian Kesra"
-          adminEmail="admin.kesra@sumbawakab.go.id"
-          avatarUrl={null}
-          unreadNotifications={2}
-        />
+        <AdminNavbar />
 
         <main className="flex-1">
           <div className="max-w-7xl mx-auto px-4 lg:px-6 py-4 sm:py-6">

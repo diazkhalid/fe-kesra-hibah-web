@@ -14,13 +14,7 @@ export default function PemohonDashboardLayout({
 
       {/* Kolom Kanan: Navbar Atas + Konten Utama */}
       <div className="flex-1 flex flex-col min-w-0">
-        <PemohonNavbar
-          userName="Ahmad Fauzi"
-          organizationName="Yayasan Nurul Iman Sumbawa"
-          email="ahmad.fauzi@nuruliman.or.id"
-          avatarUrl={null}
-          unreadNotifications={2}
-        />
+        <PemohonNavbar />
 
         <main className="flex-1">
           <div className="mx-auto px-4 sm:px-6 lg:px-6 py-6 sm:py-6">
