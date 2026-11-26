@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   Landmark,
   CreditCard,
@@ -21,6 +20,7 @@ import {
   FileCheck2,
   Clock,
 } from "lucide-react";
+import { useAuth } from "@/features/auth/hooks/useAuth.hook";
 
 interface RegisterFormData {
   nik: string;
@@ -33,7 +33,7 @@ interface RegisterFormData {
 }
 
 export default function RegisterPage() {
-  const router = useRouter();
+  const { register, isLoading, error: authError, clearError } = useAuth();
 
   const [formData, setFormData] = useState<RegisterFormData>({
     nik: "",
@@ -47,8 +47,9 @@ export default function RegisterPage() {
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  const errorMessage = validationError || authError;
 
   const handleNikChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Hanya mengizinkan angka dan maksimal 16 digit sesuai standar NIK
@@ -64,57 +65,55 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setErrorMessage(null);
+    setValidationError(null);
+    clearError();
 
     if (formData.nik.length !== 16) {
-      setErrorMessage("NIK harus terdiri dari 16 digit angka yang valid.");
+      setValidationError("NIK harus terdiri dari 16 digit angka yang valid.");
       return;
     }
 
     if (!formData.fullName.trim()) {
-      setErrorMessage("Nama lengkap wajib diisi.");
+      setValidationError("Nama lengkap wajib diisi.");
       return;
     }
 
     if (!formData.email.trim()) {
-      setErrorMessage("Alamat email wajib diisi.");
+      setValidationError("Alamat email wajib diisi.");
       return;
     }
 
     if (formData.phone.length < 10) {
-      setErrorMessage("Nomor HP minimal terdiri dari 10 digit angka.");
+      setValidationError("Nomor HP minimal terdiri dari 10 digit angka.");
       return;
     }
 
     if (formData.password.length < 8) {
-      setErrorMessage("Password minimal terdiri dari 8 karakter.");
+      setValidationError("Password minimal terdiri dari 8 karakter.");
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      setErrorMessage("Konfirmasi password tidak cocok dengan password.");
+      setValidationError("Konfirmasi password tidak cocok dengan password.");
       return;
     }
 
     if (!formData.agreeTerms) {
-      setErrorMessage(
+      setValidationError(
         "Anda harus menyetujui syarat dan ketentuan layanan terlebih dahulu.",
       );
       return;
     }
 
-    setIsLoading(true);
-    try {
-      // Simulasi pendaftaran akun (ganti dengan API / Server Action registrasi Anda)
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      router.push("/login?registered=true");
-    } catch {
-      setErrorMessage(
-        "Terjadi kesalahan saat mendaftarkan akun. Silakan coba lagi.",
-      );
-    } finally {
-      setIsLoading(false);
-    }
+    await register({
+      nik: formData.nik,
+      full_name: formData.fullName.trim(),
+      email: formData.email.trim(),
+      phone: formData.phone,
+      password: formData.password,
+      password_confirmation: formData.confirmPassword,
+      agree_to_terms: formData.agreeTerms,
+    });
   };
 
   const isPasswordMatch =
