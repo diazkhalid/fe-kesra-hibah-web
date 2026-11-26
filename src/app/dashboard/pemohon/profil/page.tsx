@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -22,15 +22,42 @@ import {
   BadgeCheck,
   Info,
 } from "lucide-react";
+import { useAuthUser } from "@/shared/contexts/SessionContext";
+import { usePemohonProfile } from "@/features/pemohon-profile/hooks/useProfile.hook";
+import { usePemohonOrganization } from "@/features/pemohon-profile/hooks/useOrganization.hook";
+import APP_CONFIG from "@/shared/global/app_config"; // Sesuaikan path import APP_CONFIG Anda
 
 type ProfileTab = "pribadi" | "organisasi" | "keamanan";
 
 export default function ProfilPemohonPage() {
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
 
+  const { user } = useAuthUser();
+  const {
+    profile,
+    isLoading: isLoadingProfile,
+    isUpdating: isUpdatingProfile,
+    isUpdatingPhoto,
+    error: profileError,
+    clearError: clearProfileError,
+    fetchProfile,
+    updateProfile,
+    updateProfilePhoto,
+  } = usePemohonProfile();
+
+  const {
+    organization,
+    isLoading: isLoadingOrg,
+    isSaving: isSavingOrg,
+    error: orgError,
+    clearError: clearOrgError,
+    fetchOrganization,
+    upsertOrganization,
+  } = usePemohonOrganization();
+
   const [activeTab, setActiveTab] = useState<ProfileTab>("pribadi");
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const [isSavingPassword, setIsSavingPassword] = useState(false);
   const [toastBanner, setToastBanner] = useState<{
     type: "success" | "error";
     message: string;
@@ -38,30 +65,28 @@ export default function ProfilPemohonPage() {
 
   // 1. State Data Pribadi Pemohon
   const [personalData, setPersonalData] = useState({
-    namaLengkap: "Ahmad Fauzi",
-    nik: "5204081205880003",
-    tempatLahir: "Sumbawa Besar",
-    tanggalLahir: "1988-05-12",
-    jenisKelamin: "Laki-laki",
-    nomorHp: "081237889910",
-    email: "ahmad.fauzi@nuruliman.or.id",
-    alamatLengkap:
-      "Jl. Kebayan No. 14, Kelurahan Uma Sima, Kecamatan Sumbawa, Kabupaten Sumbawa",
+    namaLengkap: "",
+    nik: "",
+    tempatLahir: "",
+    tanggalLahir: "",
+    jenisKelamin: "L" as "L" | "P",
+    nomorHp: "",
+    email: "",
+    alamatLengkap: "",
   });
 
   // 2. State Profil Organisasi / Lembaga
   const [orgData, setOrgData] = useState({
-    namaOrganisasi: "Yayasan Nurul Iman Sumbawa",
+    namaOrganisasi: "",
     jenisOrganisasi: "Yayasan / Lembaga Keagamaan",
-    nomorAktaPendirian: "AHU-0014829.AH.01.04.Tahun 2019",
-    tanggalPendirian: "2019-08-17",
-    nomorSkOrganisasi: "SK-04/YNI-SBW/2024",
-    alamatOrganisasi:
-      "Jl. Garuda Gg. Melati No. 08, Kelurahan Lempeh, Kecamatan Sumbawa, Kabupaten Sumbawa",
-    namaKetua: "Ahmad Fauzi",
-    nomorHpKetua: "081237889910",
-    namaSekretaris: "Siti Rahmawati, S.Pd.",
-    namaBendahara: "Muhammad Ridwan, S.E.",
+    nomorAktaPendirian: "",
+    tanggalPendirian: "",
+    nomorSkOrganisasi: "",
+    alamatOrganisasi: "",
+    namaKetua: "",
+    nomorHpKetua: "",
+    namaSekretaris: "",
+    namaBendahara: "",
   });
 
   // 3. State Keamanan / Ubah Password
@@ -76,31 +101,96 @@ export default function ProfilPemohonPage() {
     confirm: false,
   });
 
+  // Fetch data awal saat halaman dimuat
+  useEffect(() => {
+    fetchProfile();
+    fetchOrganization();
+  }, [fetchProfile, fetchOrganization]);
+
+  // Sinkronkan data dari profile & session user ke form data pribadi
+  useEffect(() => {
+    setPersonalData((prev) => ({
+      ...prev,
+      namaLengkap: profile?.full_name || user?.full_name || prev.namaLengkap,
+      nik: profile?.nik || prev.nik,
+      tempatLahir: profile?.birth_place || prev.tempatLahir,
+      tanggalLahir: profile?.birth_date
+        ? profile.birth_date.split("T")[0]
+        : prev.tanggalLahir,
+      jenisKelamin:
+        profile?.gender === "P" || profile?.gender === "Perempuan" ? "P" : "L",
+      nomorHp: user?.phone || prev.nomorHp,
+      email: user?.email || prev.email,
+      alamatLengkap: profile?.address || prev.alamatLengkap,
+    }));
+  }, [profile, user]);
+
+  // Sinkronkan data dari organization ke form profil lembaga
+  useEffect(() => {
+    if (!organization) return;
+
+    setOrgData({
+      namaOrganisasi: organization.name || "",
+      jenisOrganisasi:
+        organization.organization_type || "Yayasan / Lembaga Keagamaan",
+      nomorAktaPendirian: organization.deed_number || "",
+      tanggalPendirian: organization.established_on
+        ? organization.established_on.split("T")[0]
+        : "",
+      nomorSkOrganisasi: organization.registration_number || "",
+      alamatOrganisasi: organization.address || "",
+      namaKetua: organization.chair_name || "",
+      nomorHpKetua: organization.chair_phone || "",
+      namaSekretaris: organization.secretary_name || "",
+      namaBendahara: organization.treasurer_name || "",
+    });
+  }, [organization]);
+
+  // Bersihkan object URL saat unmount / preview berubah
+  useEffect(() => {
+    return () => {
+      if (avatarPreview) {
+        URL.revokeObjectURL(avatarPreview);
+      }
+    };
+  }, [avatarPreview]);
+
   const showToast = (type: "success" | "error", message: string) => {
     setToastBanner({ type, message });
     setTimeout(() => setToastBanner(null), 4000);
   };
 
   // Handler Ganti Foto Profil
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    clearProfileError();
+
     if (file.size > 2 * 1024 * 1024) {
-      showToast("error", "Ukuran foto profil maksimal 2 MB (JPG/PNG).");
+      showToast("error", "Ukuran foto profil maksimal 2 MB (JPG/PNG/WEBP).");
       return;
     }
 
-    if (avatarPreview) {
-      URL.revokeObjectURL(avatarPreview);
+    const previewUrl = URL.createObjectURL(file);
+    setAvatarPreview(previewUrl);
+
+    const isSuccess = await updateProfilePhoto({ image: file });
+    if (isSuccess) {
+      setAvatarPreview(null);
+      showToast("success", "Foto profil berhasil diperbarui.");
+    } else {
+      setAvatarPreview(null);
     }
-    setAvatarPreview(URL.createObjectURL(file));
-    showToast("success", "Foto profil berhasil diperbarui.");
+
+    e.target.value = "";
   };
 
   // Handler Simpan Data Pribadi
   const handleSavePersonal = async (e: React.FormEvent) => {
     e.preventDefault();
+    clearProfileError();
+
     if (!personalData.namaLengkap.trim() || personalData.nik.length !== 16) {
       showToast(
         "error",
@@ -109,18 +199,37 @@ export default function ProfilPemohonPage() {
       return;
     }
 
-    setIsSaving(true);
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 750));
+    if (
+      !personalData.tempatLahir.trim() ||
+      !personalData.tanggalLahir ||
+      !personalData.alamatLengkap.trim()
+    ) {
+      showToast(
+        "error",
+        "Tempat lahir, tanggal lahir, dan alamat lengkap wajib diisi.",
+      );
+      return;
+    }
+
+    const isSuccess = await updateProfile({
+      nik: personalData.nik,
+      full_name: personalData.namaLengkap.trim(),
+      birth_place: personalData.tempatLahir.trim(),
+      birth_date: personalData.tanggalLahir,
+      gender: personalData.jenisKelamin,
+      address: personalData.alamatLengkap.trim(),
+    });
+
+    if (isSuccess) {
       showToast("success", "Perubahan data pribadi pemohon berhasil disimpan.");
-    } finally {
-      setIsSaving(false);
     }
   };
 
   // Handler Simpan Profil Organisasi
   const handleSaveOrganization = async (e: React.FormEvent) => {
     e.preventDefault();
+    clearOrgError();
+
     if (!orgData.namaOrganisasi.trim() || !orgData.nomorAktaPendirian.trim()) {
       showToast(
         "error",
@@ -129,15 +238,24 @@ export default function ProfilPemohonPage() {
       return;
     }
 
-    setIsSaving(true);
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 750));
+    const isSuccess = await upsertOrganization({
+      name: orgData.namaOrganisasi.trim(),
+      organization_type: orgData.jenisOrganisasi,
+      deed_number: orgData.nomorAktaPendirian.trim(),
+      established_on: orgData.tanggalPendirian,
+      registration_number: orgData.nomorSkOrganisasi.trim(),
+      address: orgData.alamatOrganisasi.trim(),
+      chair_name: orgData.namaKetua.trim(),
+      chair_phone: orgData.nomorHpKetua.trim(),
+      secretary_name: orgData.namaSekretaris.trim(),
+      treasurer_name: orgData.namaBendahara.trim(),
+    });
+
+    if (isSuccess) {
       showToast(
         "success",
         "Data profil organisasi/lembaga berhasil diperbarui.",
       );
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -157,7 +275,7 @@ export default function ProfilPemohonPage() {
       return;
     }
 
-    setIsSaving(true);
+    setIsSavingPassword(true);
     try {
       await new Promise((resolve) => setTimeout(resolve, 800));
       setPasswordForm({
@@ -167,16 +285,45 @@ export default function ProfilPemohonPage() {
       });
       showToast("success", "Kata sandi akun Anda berhasil diperbarui.");
     } finally {
-      setIsSaving(false);
+      setIsSavingPassword(false);
     }
   };
 
-  const userInitials = personalData.namaLengkap
-    .split(" ")
+  const displayName =
+    personalData.namaLengkap ||
+    profile?.full_name ||
+    user?.full_name ||
+    (isLoadingProfile ? "Memuat..." : "Pemohon");
+
+  const rawPhotoUrl =
+    profile?.profile_photo_url || user?.profile?.profile_photo_url || null;
+
+  const resolvedPhotoUrl = rawPhotoUrl
+    ? rawPhotoUrl.startsWith("http")
+      ? rawPhotoUrl
+      : `${APP_CONFIG.STORAGE_URL}${rawPhotoUrl.startsWith("/") ? "" : "/"}${rawPhotoUrl}`
+    : null;
+
+  const displayAvatar = avatarPreview || resolvedPhotoUrl;
+
+  const displayOrgName =
+    orgData.namaOrganisasi ||
+    organization?.name ||
+    profile?.organization ||
+    "Belum melengkapi data lembaga";
+
+  const userInitials = displayName
+    .trim()
+    .split(/\s+/)
     .slice(0, 2)
     .map((n) => n[0])
     .join("")
     .toUpperCase();
+
+  const activeError =
+    (activeTab === "pribadi" && profileError) ||
+    (activeTab === "organisasi" && orgError) ||
+    null;
 
   // Indikator kekuatan password
   const getPasswordStrength = (pwd: string) => {
@@ -224,22 +371,24 @@ export default function ProfilPemohonPage() {
         </p>
       </div>
 
-      {/* Notifikasi Toast */}
-      {toastBanner && (
+      {/* Notifikasi Toast / Error API */}
+      {(toastBanner || activeError) && (
         <div
-          role={toastBanner.type === "error" ? "alert" : "status"}
+          role={
+            toastBanner?.type === "error" || activeError ? "alert" : "status"
+          }
           className={`flex items-center gap-2.5 rounded-2xl border px-4 py-3 text-xs font-semibold shadow-2xs ${
-            toastBanner.type === "success"
+            toastBanner?.type === "success" && !activeError
               ? "bg-emerald-50 border-emerald-200 text-emerald-800"
               : "bg-red-50 border-red-200 text-red-700"
           }`}
         >
-          {toastBanner.type === "success" ? (
+          {toastBanner?.type === "success" && !activeError ? (
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
           ) : (
             <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
           )}
-          <span>{toastBanner.message}</span>
+          <span>{activeError || toastBanner?.message}</span>
         </div>
       )}
 
@@ -262,10 +411,10 @@ export default function ProfilPemohonPage() {
               {/* Avatar + Tombol Upload Foto */}
               <div className="flex items-end justify-between">
                 <div className="relative w-20 h-20 rounded-2xl overflow-hidden bg-gradient-to-br from-app-primary to-app-primary-800 text-white flex items-center justify-center ring-4 ring-white shadow-md">
-                  {avatarPreview ? (
+                  {displayAvatar ? (
                     <Image
-                      src={avatarPreview}
-                      alt={personalData.namaLengkap}
+                      src={displayAvatar}
+                      alt={displayName}
                       fill
                       className="object-cover"
                     />
@@ -274,6 +423,12 @@ export default function ProfilPemohonPage() {
                       {userInitials}
                     </span>
                   )}
+
+                  {isUpdatingPhoto && (
+                    <div className="absolute inset-0 bg-slate-900/50 flex items-center justify-center">
+                      <Loader2 className="w-5 h-5 animate-spin text-white" />
+                    </div>
+                  )}
                 </div>
 
                 <input
@@ -281,16 +436,24 @@ export default function ProfilPemohonPage() {
                   type="file"
                   accept="image/png,image/jpeg,image/webp"
                   onChange={handleAvatarChange}
+                  disabled={isUpdatingPhoto}
                   className="hidden"
                 />
 
                 <button
                   type="button"
+                  disabled={isUpdatingPhoto}
                   onClick={() => avatarInputRef.current?.click()}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-app-primary-50 text-slate-700 hover:text-app-primary text-[11px] font-bold shadow-2xs transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-app-primary-50 disabled:opacity-60 text-slate-700 hover:text-app-primary text-[11px] font-bold shadow-2xs transition-colors cursor-pointer"
                 >
-                  <Camera className="w-3.5 h-3.5 text-app-primary" />
-                  <span>Ganti Foto</span>
+                  {isUpdatingPhoto ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-app-primary" />
+                  ) : (
+                    <Camera className="w-3.5 h-3.5 text-app-primary" />
+                  )}
+                  <span>
+                    {isUpdatingPhoto ? "Mengunggah..." : "Ganti Foto"}
+                  </span>
                 </button>
               </div>
 
@@ -298,12 +461,12 @@ export default function ProfilPemohonPage() {
               <div className="mt-3.5 space-y-1">
                 <div className="flex items-center gap-1.5">
                   <h2 className="text-base font-extrabold text-slate-900 truncate">
-                    {personalData.namaLengkap}
+                    {displayName}
                   </h2>
                   <BadgeCheck className="w-4 h-4 text-emerald-600 shrink-0" />
                 </div>
                 <p className="text-xs font-semibold text-app-primary">
-                  {orgData.namaOrganisasi}
+                  {displayOrgName}
                 </p>
                 <span className="inline-block px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold">
                   Akun Pemohon Aktif
@@ -314,16 +477,18 @@ export default function ProfilPemohonPage() {
               <div className="mt-5 pt-4 border-t border-slate-100 space-y-2.5 text-xs">
                 <div className="flex items-center gap-2.5 text-slate-600">
                   <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  <span className="truncate">{personalData.email}</span>
+                  <span className="truncate">{personalData.email || "-"}</span>
                 </div>
                 <div className="flex items-center gap-2.5 text-slate-600">
                   <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  <span>{personalData.nomorHp}</span>
+                  <span>{personalData.nomorHp || "-"}</span>
                 </div>
                 <div className="flex items-start gap-2.5 text-slate-600">
                   <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
                   <span className="text-[11px] leading-relaxed">
-                    {orgData.alamatOrganisasi}
+                    {orgData.alamatOrganisasi ||
+                      personalData.alamatLengkap ||
+                      "Alamat belum dilengkapi"}
                   </span>
                 </div>
               </div>
@@ -354,7 +519,7 @@ export default function ProfilPemohonPage() {
         {/* KOLOM KANAN (8 KOLOM): TABS & FORM PENGATURAN */}
         <div className="lg:col-span-8 space-y-5">
           {/* Navigasi Tab */}
-          <div className="rounded-2xl bg-white border border-slate-200/80 p-1.5 shadow-2xs grid grid-cols-3 gap-1.5">
+          <div className="rounded-2xl bg-white border border-slate-200/80 p-1.5 shadow-2xs grid grid-cols-2 gap-1.5">
             <button
               type="button"
               onClick={() => setActiveTab("pribadi")}
@@ -380,19 +545,6 @@ export default function ProfilPemohonPage() {
               <Building2 className="w-3.5 h-3.5 shrink-0" />
               <span className="truncate">Profil Lembaga</span>
             </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab("keamanan")}
-              className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                activeTab === "keamanan"
-                  ? "bg-app-primary text-white shadow-xs"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-              }`}
-            >
-              <LockKeyhole className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate">Keamanan</span>
-            </button>
           </div>
 
           {/* =================================================================
@@ -403,14 +555,19 @@ export default function ProfilPemohonPage() {
               onSubmit={handleSavePersonal}
               className="rounded-2xl bg-white border border-slate-200/80 shadow-2xs overflow-hidden"
             >
-              <div className="px-5 py-4 bg-slate-50/80 border-b border-slate-100">
-                <h2 className="text-sm font-extrabold text-slate-900">
-                  Identitas Pribadi Pemohon
-                </h2>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  Pastikan data diri sesuai dengan Kartu Tanda Penduduk (KTP)
-                  yang masih berlaku.
-                </p>
+              <div className="px-5 py-4 bg-slate-50/80 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h2 className="text-sm font-extrabold text-slate-900">
+                    Identitas Pribadi Pemohon
+                  </h2>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Pastikan data diri sesuai dengan Kartu Tanda Penduduk (KTP)
+                    yang masih berlaku.
+                  </p>
+                </div>
+                {isLoadingProfile && (
+                  <Loader2 className="w-4 h-4 animate-spin text-app-primary shrink-0" />
+                )}
               </div>
 
               <div className="p-5 sm:p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -421,6 +578,7 @@ export default function ProfilPemohonPage() {
                   <input
                     type="text"
                     required
+                    disabled={isLoadingProfile || isUpdatingProfile}
                     value={personalData.namaLengkap}
                     onChange={(e) =>
                       setPersonalData({
@@ -428,7 +586,7 @@ export default function ProfilPemohonPage() {
                         namaLengkap: e.target.value,
                       })
                     }
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15 disabled:opacity-60"
                   />
                 </div>
 
@@ -445,6 +603,7 @@ export default function ProfilPemohonPage() {
                     type="text"
                     inputMode="numeric"
                     required
+                    disabled={isLoadingProfile || isUpdatingProfile}
                     value={personalData.nik}
                     onChange={(e) =>
                       setPersonalData({
@@ -452,7 +611,7 @@ export default function ProfilPemohonPage() {
                         nik: e.target.value.replace(/\D/g, "").slice(0, 16),
                       })
                     }
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15 disabled:opacity-60"
                   />
                 </div>
 
@@ -463,6 +622,7 @@ export default function ProfilPemohonPage() {
                   <input
                     type="text"
                     required
+                    disabled={isLoadingProfile || isUpdatingProfile}
                     value={personalData.tempatLahir}
                     onChange={(e) =>
                       setPersonalData({
@@ -470,7 +630,8 @@ export default function ProfilPemohonPage() {
                         tempatLahir: e.target.value,
                       })
                     }
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
+                    placeholder="Contoh: Sumbawa Besar"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15 disabled:opacity-60"
                   />
                 </div>
 
@@ -482,6 +643,7 @@ export default function ProfilPemohonPage() {
                     <input
                       type="date"
                       required
+                      disabled={isLoadingProfile || isUpdatingProfile}
                       value={personalData.tanggalLahir}
                       onChange={(e) =>
                         setPersonalData({
@@ -489,7 +651,7 @@ export default function ProfilPemohonPage() {
                           tanggalLahir: e.target.value,
                         })
                       }
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15 disabled:opacity-60"
                     />
                   </div>
 
@@ -498,54 +660,43 @@ export default function ProfilPemohonPage() {
                       Jenis Kelamin <span className="text-red-500">*</span>
                     </label>
                     <select
+                      disabled={isLoadingProfile || isUpdatingProfile}
                       value={personalData.jenisKelamin}
                       onChange={(e) =>
                         setPersonalData({
                           ...personalData,
-                          jenisKelamin: e.target.value,
+                          jenisKelamin: e.target.value as "L" | "P",
                         })
                       }
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15 disabled:opacity-60"
                     >
-                      <option value="Laki-laki">Laki-laki</option>
-                      <option value="Perempuan">Perempuan</option>
+                      <option value="L">Laki-laki</option>
+                      <option value="P">Perempuan</option>
                     </select>
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-slate-700">
-                    Nomor HP / WhatsApp <span className="text-red-500">*</span>
+                    Nomor HP / WhatsApp
                   </label>
                   <input
                     type="tel"
-                    required
+                    disabled
                     value={personalData.nomorHp}
-                    onChange={(e) =>
-                      setPersonalData({
-                        ...personalData,
-                        nomorHp: e.target.value.replace(/\D/g, "").slice(0, 15),
-                      })
-                    }
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-100 px-3.5 py-2.5 text-xs text-slate-500 cursor-not-allowed"
                   />
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-slate-700">
-                    Email <span className="text-red-500">*</span>
+                    Email
                   </label>
                   <input
                     type="email"
-                    required
+                    disabled
                     value={personalData.email}
-                    onChange={(e) =>
-                      setPersonalData({
-                        ...personalData,
-                        email: e.target.value,
-                      })
-                    }
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-100 px-3.5 py-2.5 text-xs text-slate-500 cursor-not-allowed"
                   />
                 </div>
 
@@ -556,6 +707,7 @@ export default function ProfilPemohonPage() {
                   <textarea
                     rows={2}
                     required
+                    disabled={isLoadingProfile || isUpdatingProfile}
                     value={personalData.alamatLengkap}
                     onChange={(e) =>
                       setPersonalData({
@@ -563,7 +715,8 @@ export default function ProfilPemohonPage() {
                         alamatLengkap: e.target.value,
                       })
                     }
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
+                    placeholder="Masukkan alamat domisili sesuai KTP"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15 disabled:opacity-60"
                   />
                 </div>
               </div>
@@ -571,10 +724,10 @@ export default function ProfilPemohonPage() {
               <div className="px-5 py-3.5 bg-slate-50/80 border-t border-slate-100 flex justify-end">
                 <button
                   type="submit"
-                  disabled={isSaving}
+                  disabled={isLoadingProfile || isUpdatingProfile}
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-app-primary hover:bg-app-primary-800 disabled:opacity-60 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
                 >
-                  {isSaving ? (
+                  {isUpdatingProfile ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin text-app-secondary" />
                   ) : (
                     <Save className="w-3.5 h-3.5 text-app-secondary" />
@@ -593,14 +746,19 @@ export default function ProfilPemohonPage() {
               onSubmit={handleSaveOrganization}
               className="rounded-2xl bg-white border border-slate-200/80 shadow-2xs overflow-hidden"
             >
-              <div className="px-5 py-4 bg-slate-50/80 border-b border-slate-100">
-                <h2 className="text-sm font-extrabold text-slate-900">
-                  Identitas Organisasi / Lembaga
-                </h2>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  Perbarui data legalitas akta pendirian, SK kepengurusan, dan
-                  susunan pengurus organisasi.
-                </p>
+              <div className="px-5 py-4 bg-slate-50/80 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h2 className="text-sm font-extrabold text-slate-900">
+                    Identitas Organisasi / Lembaga
+                  </h2>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Perbarui data legalitas akta pendirian, SK kepengurusan, dan
+                    susunan pengurus organisasi.
+                  </p>
+                </div>
+                {isLoadingOrg && (
+                  <Loader2 className="w-4 h-4 animate-spin text-app-primary shrink-0" />
+                )}
               </div>
 
               <div className="p-5 sm:p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -612,11 +770,13 @@ export default function ProfilPemohonPage() {
                   <input
                     type="text"
                     required
+                    disabled={isLoadingOrg || isSavingOrg}
                     value={orgData.namaOrganisasi}
                     onChange={(e) =>
                       setOrgData({ ...orgData, namaOrganisasi: e.target.value })
                     }
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
+                    placeholder="Contoh: Yayasan Nurul Iman Sumbawa"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15 disabled:opacity-60"
                   />
                 </div>
 
@@ -625,6 +785,7 @@ export default function ProfilPemohonPage() {
                     Jenis Organisasi <span className="text-red-500">*</span>
                   </label>
                   <select
+                    disabled={isLoadingOrg || isSavingOrg}
                     value={orgData.jenisOrganisasi}
                     onChange={(e) =>
                       setOrgData({
@@ -632,7 +793,7 @@ export default function ProfilPemohonPage() {
                         jenisOrganisasi: e.target.value,
                       })
                     }
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15 disabled:opacity-60"
                   >
                     <option value="Yayasan / Lembaga Keagamaan">
                       Yayasan / Lembaga Keagamaan
@@ -659,6 +820,7 @@ export default function ProfilPemohonPage() {
                   <input
                     type="text"
                     required
+                    disabled={isLoadingOrg || isSavingOrg}
                     value={orgData.nomorAktaPendirian}
                     onChange={(e) =>
                       setOrgData({
@@ -666,7 +828,8 @@ export default function ProfilPemohonPage() {
                         nomorAktaPendirian: e.target.value,
                       })
                     }
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
+                    placeholder="Nomor Akta Notaris / Kemenkumham"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15 disabled:opacity-60"
                   />
                 </div>
 
@@ -678,6 +841,7 @@ export default function ProfilPemohonPage() {
                     <input
                       type="date"
                       required
+                      disabled={isLoadingOrg || isSavingOrg}
                       value={orgData.tanggalPendirian}
                       onChange={(e) =>
                         setOrgData({
@@ -685,16 +849,19 @@ export default function ProfilPemohonPage() {
                           tanggalPendirian: e.target.value,
                         })
                       }
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15 disabled:opacity-60"
                     />
                   </div>
 
                   <div className="space-y-1.5">
                     <label className="block text-xs font-bold text-slate-700">
-                      Nomor SK Organisasi
+                      Nomor SK Organisasi{" "}
+                      <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
+                      required
+                      disabled={isLoadingOrg || isSavingOrg}
                       value={orgData.nomorSkOrganisasi}
                       onChange={(e) =>
                         setOrgData({
@@ -702,7 +869,8 @@ export default function ProfilPemohonPage() {
                           nomorSkOrganisasi: e.target.value,
                         })
                       }
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
+                      placeholder="Nomor SK Kepengurusan"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15 disabled:opacity-60"
                     />
                   </div>
                 </div>
@@ -715,6 +883,7 @@ export default function ProfilPemohonPage() {
                   <textarea
                     rows={2}
                     required
+                    disabled={isLoadingOrg || isSavingOrg}
                     value={orgData.alamatOrganisasi}
                     onChange={(e) =>
                       setOrgData({
@@ -722,7 +891,8 @@ export default function ProfilPemohonPage() {
                         alamatOrganisasi: e.target.value,
                       })
                     }
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
+                    placeholder="Alamat lengkap sekretariat lembaga"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15 disabled:opacity-60"
                   />
                 </div>
 
@@ -734,11 +904,12 @@ export default function ProfilPemohonPage() {
                   <input
                     type="text"
                     required
+                    disabled={isLoadingOrg || isSavingOrg}
                     value={orgData.namaKetua}
                     onChange={(e) =>
                       setOrgData({ ...orgData, namaKetua: e.target.value })
                     }
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15 disabled:opacity-60"
                   />
                 </div>
 
@@ -749,6 +920,7 @@ export default function ProfilPemohonPage() {
                   <input
                     type="tel"
                     required
+                    disabled={isLoadingOrg || isSavingOrg}
                     value={orgData.nomorHpKetua}
                     onChange={(e) =>
                       setOrgData({
@@ -758,7 +930,7 @@ export default function ProfilPemohonPage() {
                           .slice(0, 15),
                       })
                     }
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15 disabled:opacity-60"
                   />
                 </div>
 
@@ -769,11 +941,12 @@ export default function ProfilPemohonPage() {
                   <input
                     type="text"
                     required
+                    disabled={isLoadingOrg || isSavingOrg}
                     value={orgData.namaSekretaris}
                     onChange={(e) =>
                       setOrgData({ ...orgData, namaSekretaris: e.target.value })
                     }
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15 disabled:opacity-60"
                   />
                 </div>
 
@@ -784,11 +957,12 @@ export default function ProfilPemohonPage() {
                   <input
                     type="text"
                     required
+                    disabled={isLoadingOrg || isSavingOrg}
                     value={orgData.namaBendahara}
                     onChange={(e) =>
                       setOrgData({ ...orgData, namaBendahara: e.target.value })
                     }
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15 disabled:opacity-60"
                   />
                 </div>
               </div>
@@ -796,10 +970,10 @@ export default function ProfilPemohonPage() {
               <div className="px-5 py-3.5 bg-slate-50/80 border-t border-slate-100 flex justify-end">
                 <button
                   type="submit"
-                  disabled={isSaving}
+                  disabled={isLoadingOrg || isSavingOrg}
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-app-primary hover:bg-app-primary-800 disabled:opacity-60 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
                 >
-                  {isSaving ? (
+                  {isSavingOrg ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin text-app-secondary" />
                   ) : (
                     <Save className="w-3.5 h-3.5 text-app-secondary" />
@@ -961,10 +1135,10 @@ export default function ProfilPemohonPage() {
 
                 <button
                   type="submit"
-                  disabled={isSaving}
+                  disabled={isSavingPassword}
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-app-primary hover:bg-app-primary-800 disabled:opacity-60 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
                 >
-                  {isSaving ? (
+                  {isSavingPassword ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin text-app-secondary" />
                   ) : (
                     <LockKeyhole className="w-3.5 h-3.5 text-app-secondary" />
