@@ -69,3 +69,18 @@ export async function pemohonGetHistoryPengajuan(
     return handleServiceError(error);
   }
 }
+
+export async function pemohonDetailHistoryPengajuan(token: string, id: string) {
+  try {
+    const response = await axios.get(
+      API_ENDPOINT.PEMOHON.PENGAJUAN.DETAIL(id),
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      },
+    );
+    return response;
+  } catch (error) {
+    console.log(error);
+    return handleServiceError(error);
+  }
+}

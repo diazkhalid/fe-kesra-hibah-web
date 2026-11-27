@@ -2,10 +2,12 @@ import { useState, useCallback } from "react";
 import {
   pemohonUpsertPengajuan,
   pemohonGetHistoryPengajuan,
+  pemohonDetailHistoryPengajuan,
 } from "../services/pengajuan.service"; // Sesuaikan path import jika berbeda
 import {
   GrantApplicationParams,
   PemohonGrantApplicationData,
+  PemohonGrantApplicationDetail,
   PemohonUpsertGrantApplicationDto,
 } from "../types/pengajuan.type";
 import { useToast } from "@/shared/contexts/ToastContext";
@@ -16,6 +18,12 @@ interface HistoryApiResponse {
   message: string;
   data: PemohonGrantApplicationData[];
   pagination: Pagination;
+}
+
+interface DetailHistoryApiResponse {
+  success: boolean;
+  message: string;
+  data: PemohonGrantApplicationDetail;
 }
 
 const DEFAULT_PARAMS: GrantApplicationParams = {
@@ -31,9 +39,12 @@ const DEFAULT_PARAMS: GrantApplicationParams = {
 export function usePemohonPengajuan(initialParams?: GrantApplicationParams) {
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(false);
+  const [isLoadingDetail, setIsLoadingDetail] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   const [history, setHistory] = useState<PemohonGrantApplicationData[]>([]);
+  const [detailHistory, setDetailHistory] =
+    useState<PemohonGrantApplicationDetail | null>(null);
   const [params, setParams] = useState<GrantApplicationParams>({
     ...DEFAULT_PARAMS,
     ...initialParams,
@@ -131,6 +142,51 @@ export function usePemohonPengajuan(initialParams?: GrantApplicationParams) {
     [params],
   );
 
+  const fetchDetailHistory = useCallback(async (id: string) => {
+    const token = getToken();
+    if (!token) {
+      setError("Sesi login tidak ditemukan, silakan login kembali.");
+      return null;
+    }
+
+    if (!id) {
+      setError("ID pengajuan tidak valid.");
+      return null;
+    }
+
+    setIsLoadingDetail(true);
+    setError(null);
+
+    try {
+      const result = await pemohonDetailHistoryPengajuan(token, id);
+
+      if (result.status !== 200 || !("data" in result)) {
+        if (
+          result.status >= 400 &&
+          result.status <= 499 &&
+          "message" in result
+        ) {
+          setError(String(result.message));
+          setDetailHistory(null);
+          return null;
+        }
+        setError("Gagal memuat detail pengajuan hibah, silakan coba lagi!");
+        setDetailHistory(null);
+        return null;
+      }
+
+      clearError();
+
+      const responseBody = result.data as DetailHistoryApiResponse;
+      const detailData = responseBody?.data ?? null;
+
+      setDetailHistory(detailData);
+      return detailData;
+    } finally {
+      setIsLoadingDetail(false);
+    }
+  }, []);
+
   const updateFilters = useCallback(
     (newFilters: Partial<GrantApplicationParams>) => {
       setParams((prev) => ({
@@ -218,6 +274,11 @@ export function usePemohonPengajuan(initialParams?: GrantApplicationParams) {
     setPage,
     setRowsPerPage,
     resetFilters,
+
+    // Detail History
+    detailHistory,
+    isLoadingDetail,
+    fetchDetailHistory,
 
     // Error handling
     error,
