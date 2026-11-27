@@ -98,11 +98,19 @@ export interface GrantApplicationDocument {
 }
 
 export interface GrantVerificationReview {
-  // Menunggu struktur response
+  id: string;
+  submission_id: string;
+  verifier_user_id: string;
+  decision: GrantApplicationStatus;
+  note: string;
+  created_at: string;
 }
 
 export interface GrantStatusHistory {
-  // Menunggu struktur response
+  status: GrantApplicationStatus;
+  title: string;
+  description: string;
+  occurred_at: string;
 }
 
 export type GrantDocumentReviewStatus =

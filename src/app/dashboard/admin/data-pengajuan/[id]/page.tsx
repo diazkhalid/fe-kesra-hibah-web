@@ -16,6 +16,8 @@ import {
   Hourglass,
   XCircle,
   ShieldCheck,
+  ShieldAlert,
+  Award,
   MapPin,
   Layers,
   Send,
@@ -28,12 +30,13 @@ import {
   FileSpreadsheet,
   AlertCircle,
   Loader2,
+  History,
 } from "lucide-react";
 import {
   GrantApplicationDocument,
   GrantApplicationStatus,
 } from "@/features/pemohon-pengajuan/types/pengajuan.type";
-import APP_CONFIG from "@/shared/global/app_config"; // Sesuaikan path import APP_CONFIG Anda
+import APP_CONFIG from "@/shared/global/app_config";
 import { useAdminPengajuan } from "@/features/admin-pengajuan/hooks/usePengajuan.hook";
 
 const STATUS_META: Record<
@@ -164,6 +167,14 @@ export default function AdminDetailPengajuanPage() {
       setActiveDocId(detailPengajuan.documents[0].id);
     }
 
+    const sorted = [...(detailPengajuan.verification_reviews || [])].sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    );
+    if (sorted[0]?.note) {
+      setVerifyNote(sorted[0].note);
+    }
+
     if (detailPengajuan.status === "ditolak") {
       setVerifyDecision("ditolak");
     } else {
@@ -237,6 +248,16 @@ export default function AdminDetailPengajuanPage() {
     detail.documents.find((d) => Boolean(d.download_url));
 
   const activeDocUrl = resolveFileUrl(activeDoc?.download_url);
+
+  // Urutkan verification_reviews terbaru di atas
+  const sortedReviews = [...(detail.verification_reviews || [])].sort(
+    (a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  );
+  const latestReview = sortedReviews[0] ?? null;
+
+  // Linimasa status dari status_history
+  const statusHistoryList = detail.status_history || [];
 
   const handleSelectDecision = (decision: "terverifikasi" | "ditolak") => {
     clearError();
@@ -359,6 +380,51 @@ export default function AdminDetailPengajuanPage() {
             </p>
           </div>
         </div>
+
+        {/* Banner Catatan Verifikasi Terbaru dari verification_reviews */}
+        {latestReview && (
+          <div
+            className={`rounded-2xl p-4 border flex items-start gap-3 text-xs ${
+              latestReview.decision === "terverifikasi"
+                ? "bg-emerald-50/80 border-emerald-200 text-emerald-950"
+                : latestReview.decision === "ditolak"
+                  ? "bg-rose-50/80 border-rose-200 text-rose-950"
+                  : "bg-slate-50 border-slate-200/80 text-slate-700"
+            }`}
+          >
+            <div
+              className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+                latestReview.decision === "terverifikasi"
+                  ? "bg-emerald-100 text-emerald-700"
+                  : latestReview.decision === "ditolak"
+                    ? "bg-rose-100 text-rose-700"
+                    : "bg-app-primary-50 text-app-primary"
+              }`}
+            >
+              {latestReview.decision === "terverifikasi" ? (
+                <Award className="w-4 h-4" />
+              ) : (
+                <ShieldAlert className="w-4 h-4" />
+              )}
+            </div>
+            <div className="space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-extrabold">
+                  {latestReview.decision === "terverifikasi"
+                    ? "Hasil Verifikasi Administrasi"
+                    : latestReview.decision === "ditolak"
+                      ? "Alasan Penolakan Pengajuan"
+                      : "Catatan Verifikator"}
+                </span>
+                <span className="text-[10.5px] opacity-75">
+                  ({formatDateTime(latestReview.created_at).date} •{" "}
+                  {formatDateTime(latestReview.created_at).time})
+                </span>
+              </div>
+              <p className="leading-relaxed">{latestReview.note}</p>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* =====================================================================
@@ -767,12 +833,13 @@ export default function AdminDetailPengajuanPage() {
         </div>
 
         {/* -------------------------------------------------------------------
-            KOLOM KANAN (4 KOLOM): STICKY DECISION DESK
+            KOLOM KANAN (4 KOLOM): STICKY DECISION DESK & JEJAK STATUS
         -------------------------------------------------------------------- */}
         <aside
           id="verifikasi"
-          className="lg:col-span-4 lg:sticky lg:top-20 scroll-mt-20"
+          className="lg:col-span-4 lg:sticky lg:top-20 space-y-5 scroll-mt-20"
         >
+          {/* PANEL 1: KEPUTUSAN VERIFIKASI */}
           <form
             onSubmit={handleSaveVerification}
             className="rounded-3xl bg-white border border-slate-200/90 shadow-sm overflow-hidden"
@@ -956,6 +1023,131 @@ export default function AdminDetailPengajuanPage() {
               )}
             </div>
           </form>
+
+          {/* PANEL 2: JEJAK STATUS PENGAJUAN (status_history) */}
+          <div className="rounded-3xl bg-white border border-slate-200/90 p-5 shadow-2xs space-y-4">
+            <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
+              <div className="w-8 h-8 rounded-xl bg-app-primary-50 text-app-primary flex items-center justify-center shrink-0">
+                <History className="w-4 h-4 stroke-[2.2]" />
+              </div>
+              <div>
+                <h3 className="text-sm font-extrabold text-slate-900">
+                  Jejak Status Pengajuan
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Linimasa riwayat proses berkas
+                </p>
+              </div>
+            </div>
+
+            {statusHistoryList.length === 0 ? (
+              <p className="text-xs text-slate-500 py-2">
+                Belum ada riwayat perubahan status.
+              </p>
+            ) : (
+              <ol className="relative border-l-2 border-slate-200 ml-3 space-y-5 py-1">
+                {statusHistoryList.map((item, idx) => {
+                  const historyMeta =
+                    STATUS_META[item.status] ?? STATUS_META.menunggu_verifikasi;
+                  const occurred = formatDateTime(item.occurred_at);
+                  const isLatest = idx === statusHistoryList.length - 1;
+
+                  const dotBgClass =
+                    item.status === "terverifikasi"
+                      ? "bg-emerald-500"
+                      : item.status === "ditolak"
+                        ? "bg-red-500"
+                        : isLatest
+                          ? "bg-sky-500"
+                          : "bg-app-primary";
+
+                  const titleColorClass =
+                    item.status === "terverifikasi"
+                      ? "text-emerald-700"
+                      : item.status === "ditolak"
+                        ? "text-red-700"
+                        : "text-slate-900";
+
+                  return (
+                    <li
+                      key={`${item.status}-${item.occurred_at}-${idx}`}
+                      className="pl-5 relative"
+                    >
+                      <span
+                        className={`absolute -left-[9px] top-0.5 w-4 h-4 rounded-full ring-4 ring-white flex items-center justify-center ${dotBgClass}`}
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                      </span>
+
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <p
+                          className={`text-xs font-extrabold ${titleColorClass}`}
+                        >
+                          {item.title}
+                        </p>
+                        <span
+                          className={`px-2 py-0.5 rounded-full border text-[9.5px] font-bold ${historyMeta.badgeClass}`}
+                        >
+                          {historyMeta.label}
+                        </span>
+                      </div>
+
+                      <p className="text-[10.5px] text-slate-400 mt-0.5">
+                        {occurred.date} • {occurred.time}
+                      </p>
+
+                      {item.description && (
+                        <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
+                          {item.description}
+                        </p>
+                      )}
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+          </div>
+
+          {/* PANEL 3: RIWAYAT CATATAN VERIFIKASI (jika lebih dari 1 review) */}
+          {sortedReviews.length > 1 && (
+            <div className="rounded-3xl bg-white border border-slate-200/90 p-5 shadow-2xs space-y-3">
+              <h3 className="text-xs font-extrabold text-slate-900">
+                Riwayat Evaluasi Verifikator ({sortedReviews.length})
+              </h3>
+              <div className="space-y-2.5">
+                {sortedReviews.map((review) => {
+                  const reviewDate = formatDateTime(review.created_at);
+                  const isApproved = review.decision === "terverifikasi";
+                  return (
+                    <div
+                      key={review.id}
+                      className={`rounded-xl p-3 border text-xs space-y-1 ${
+                        isApproved
+                          ? "bg-emerald-50/60 border-emerald-200/80"
+                          : "bg-rose-50/60 border-rose-200/80"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span
+                          className={`font-extrabold ${
+                            isApproved ? "text-emerald-700" : "text-rose-700"
+                          }`}
+                        >
+                          {isApproved ? "Terverifikasi" : "Ditolak"}
+                        </span>
+                        <span className="text-[10px] text-slate-500">
+                          {reviewDate.date}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-700 leading-relaxed">
+                        {review.note}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </aside>
       </div>
     </div>
