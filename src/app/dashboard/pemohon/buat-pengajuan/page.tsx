@@ -26,6 +26,13 @@ import {
   ExternalLink,
   BadgeCheck,
 } from "lucide-react";
+import { useAuthUser } from "@/shared/contexts/SessionContext";
+import { usePemohonProfile } from "@/features/pemohon-profile/hooks/useProfile.hook";
+import { usePemohonOrganization } from "@/features/pemohon-profile/hooks/useOrganization.hook";
+import { GrantDocumentOptionType } from "@/shared/types/option.type"; // Sesuaikan path import type Anda
+import { usePemohonPengajuan } from "@/features/pemohon-pengajuan/hooks/usePengajuan.hook";
+import { useOptions } from "@/shared/hooks/useOption.hook";
+import { GrantDocument } from "@/features/pemohon-pengajuan/types/pengajuan.type";
 
 type StepId = 1 | 2 | 3;
 
@@ -35,78 +42,6 @@ interface UploadedDoc {
   sizeLabel: string;
   uploadedAt: string;
 }
-
-interface DocRequirement {
-  key: string;
-  label: string;
-  required: boolean;
-  accept: string;
-  formatLabel: string;
-  maxSizeMB: number;
-  note?: string;
-}
-
-const DOC_REQUIREMENTS: DocRequirement[] = [
-  {
-    key: "proposal",
-    label: "Proposal Permohonan Hibah",
-    required: true,
-    accept: ".pdf",
-    formatLabel: "PDF",
-    maxSizeMB: 10,
-    note: "Memuat latar belakang, tujuan, rencana kegiatan, dan RAB lengkap.",
-  },
-  {
-    key: "suratPermohonan",
-    label: "Surat Permohonan Hibah",
-    required: true,
-    accept: ".pdf",
-    formatLabel: "PDF",
-    maxSizeMB: 5,
-    note: "Ditujukan kepada Bupati Sumbawa Cq. Kepala Bagian Kesra.",
-  },
-  {
-    key: "profilOrganisasi",
-    label: "Profil Organisasi / Lembaga",
-    required: true,
-    accept: ".pdf",
-    formatLabel: "PDF",
-    maxSizeMB: 5,
-  },
-  {
-    key: "aktaPendirian",
-    label: "Akta Pendirian / Surat Keterangan Terdaftar",
-    required: true,
-    accept: ".pdf",
-    formatLabel: "PDF",
-    maxSizeMB: 5,
-  },
-  {
-    key: "skKepengurusan",
-    label: "SK Kepengurusan Aktif",
-    required: true,
-    accept: ".pdf",
-    formatLabel: "PDF",
-    maxSizeMB: 5,
-  },
-  {
-    key: "ktpKetua",
-    label: "KTP Ketua / Pimpinan Lembaga",
-    required: true,
-    accept: ".pdf,.jpg,.jpeg,.png",
-    formatLabel: "PDF / JPG / PNG",
-    maxSizeMB: 2,
-  },
-  {
-    key: "dokumenPendukung",
-    label: "Dokumen Pendukung Lainnya",
-    required: false,
-    accept: ".pdf,.jpg,.jpeg,.png",
-    formatLabel: "PDF / JPG / PNG",
-    maxSizeMB: 10,
-    note: "Opsional (misal: Surat Domisili, NPWP Lembaga, atau Buku Rekening).",
-  },
-];
 
 const STEPS = [
   {
@@ -129,78 +64,58 @@ const STEPS = [
   },
 ];
 
-// Data Profil Pemohon & Organisasi yang otomatis ditarik dari halaman Profil Saya
-const PROFILE_DATA = {
-  pemohon: {
-    namaLengkap: "Ahmad Fauzi",
-    nik: "5204081205880003",
-    tempatLahir: "Sumbawa Besar",
-    tanggalLahir: "1988-05-12",
-    jenisKelamin: "Laki-laki",
-    alamatLengkap:
-      "Jl. Kebayan No. 14, Kelurahan Uma Sima, Kecamatan Sumbawa, Kabupaten Sumbawa",
-    nomorHp: "081237889910",
-    email: "ahmad.fauzi@nuruliman.or.id",
-  },
-  organisasi: {
-    namaOrganisasi: "Yayasan Nurul Iman Sumbawa",
-    jenisOrganisasi: "Yayasan / Lembaga Keagamaan",
-    nomorAktaPendirian: "AHU-0014829.AH.01.04.Tahun 2019",
-    tanggalPendirian: "2019-08-17",
-    nomorSkOrganisasi: "SK-04/YNI-SBW/2024",
-    alamatOrganisasi:
-      "Jl. Garuda Gg. Melati No. 08, Kelurahan Lempeh, Kecamatan Sumbawa, Kabupaten Sumbawa",
-    namaKetua: "Ahmad Fauzi",
-    nomorHpKetua: "081237889910",
-    namaSekretaris: "Siti Rahmawati, S.Pd.",
-    namaBendahara: "Muhammad Ridwan, S.E.",
-  },
-};
+// Helper konversi MIME types dari backend ke label & atribut accept input file
+function formatMimeTypesLabel(mimeTypes: string[]): string {
+  if (!mimeTypes || mimeTypes.length === 0) return "PDF";
+  const map: Record<string, string> = {
+    "application/pdf": "PDF",
+    "image/jpeg": "JPG",
+    "image/jpg": "JPG",
+    "image/png": "PNG",
+    "image/webp": "WEBP",
+  };
+  const labels = Array.from(
+    new Set(
+      mimeTypes.map(
+        (m) => map[m.toLowerCase()] || m.split("/")[1]?.toUpperCase() || m,
+      ),
+    ),
+  );
+  return labels.join(" / ");
+}
 
-// Helper membuat file PDF dummy yang valid agar bisa langsung di-preview di modal
-function createDummyPdfFile(fileName: string, titleText: string): File {
-  const safeText = titleText.replace(/[()\\]/g, "");
-  const pdfContent = `%PDF-1.4
-1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj
-2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj
-3 0 obj << /Type /Page /Parent 2 0 R /Resources << /Font << /F1 4 0 R >> >> /MediaBox [0 0 595 842] /Contents 5 0 R >> endobj
-4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> endobj
-5 0 obj << /Length 130 >>
-stream
-BT
-/F1 16 Tf
-50 760 Td
-(DOKUMEN DUMMY - E-HIBAH KABUPATEN SUMBAWA) Tj
-0 -30 Td
-/F1 12 Tf
-(${safeText}) Tj
-ET
-endstream
-endobj
-xref
-0 6
-0000000000 65535 f 
-0000000009 00000 n 
-0000000058 00000 n 
-0000000115 00000 n 
-0000000229 00000 n 
-0000000302 00000 n 
-trailer << /Size 6 /Root 1 0 R >>
-startxref
-482
-%%EOF`;
-
-  return new File([pdfContent], fileName, { type: "application/pdf" });
+function formatMaxFileSize(bytes: number): string {
+  if (!bytes || bytes <= 0) return "5 MB";
+  const mb = bytes / (1024 * 1024);
+  return mb >= 1
+    ? `${Number.isInteger(mb) ? mb : mb.toFixed(1)} MB`
+    : `${Math.round(bytes / 1024)} KB`;
 }
 
 export default function BuatPengajuanPage() {
   const router = useRouter();
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
+  const { user } = useAuthUser();
+  const { profile, fetchProfile } = usePemohonProfile();
+  const { organization, fetchOrganization } = usePemohonOrganization();
+  const {
+    isSaving,
+    error: pengajuanError,
+    clearError: clearPengajuanError,
+    upsertPengajuan,
+  } = usePemohonPengajuan();
+  const {
+    documentOptions,
+    isLoadingDocuments,
+    error: optionError,
+    clearError: clearOptionError,
+    fetchDocumentOptions,
+  } = useOptions();
+
   const [currentStep, setCurrentStep] = useState<StepId>(1);
-  const [errorBanner, setErrorBanner] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const [draftSavedNotice, setDraftSavedNotice] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Modal Preview Dokumen
   const [previewModal, setPreviewModal] = useState<{
@@ -208,83 +123,53 @@ export default function BuatPengajuanPage() {
     doc: UploadedDoc;
   } | null>(null);
 
-  // STEP 1 (Sebelumnya Step 3): Informasi Pengajuan
+  // STEP 1: Informasi Pengajuan
   const [pengajuanForm, setPengajuanForm] = useState({
     tahunPengajuan: "2027",
     bidangPengajuan: "Keagamaan & Sarana Ibadah",
-    namaKegiatan:
-      "Rehabilitasi Ruang Belajar TPQ dan Pengadaan Sarana Pendidikan Al-Quran",
-    latarBelakang:
-      "Kondisi atap dan ruang kelas Taman Pendidikan Al-Quran (TPQ) Nurul Iman saat ini mengalami kerusakan ringan hingga sedang akibat usia bangunan, sementara jumlah santri aktif terus meningkat setiap tahunnya sehingga dibutuhkan perbaikan ruang belajar yang layak dan nyaman.",
-    maksudTujuan:
-      "Meningkatkan kelayakan sarana dan prasarana pendidikan keagamaan non-formal serta menciptakan lingkungan belajar mengaji yang aman, bersih, dan kondusif bagi 145 santri di Kelurahan Lempeh.",
-    jumlahDana: "45.000.000",
-    lokasiKegiatan:
-      "Jl. Garuda Gg. Melati No. 08, Kelurahan Lempeh, Kecamatan Sumbawa, Kabupaten Sumbawa",
-    waktuPelaksanaan: "Maret – Mei 2027",
-    manfaatKegiatan:
-      "Memberikan fasilitas belajar Al-Quran yang representatif bagi 145 santri serta mendukung program pembinaan generasi muda berakhlak mulia di wilayah Kecamatan Sumbawa.",
+    namaKegiatan: "",
+    latarBelakang: "",
+    maksudTujuan: "",
+    jumlahDana: "",
+    lokasiKegiatan: "",
+    waktuPelaksanaan: "",
+    manfaatKegiatan: "",
   });
 
-  // STEP 2 (Sebelumnya Step 4): Upload Dokumen
+  // STEP 2: Upload Dokumen (key berdasarkan option.document_type)
   const [documents, setDocuments] = useState<Record<string, UploadedDoc>>({});
 
-  // Inisialisasi file PDF dummy saat komponen dimuat di client
+  // STEP 3: Pernyataan Kebenaran Data
+  const [isDeclaredTrue, setIsDeclaredTrue] = useState(false);
+
+  // Fetch data profil, lembaga, dan daftar persyaratan dokumen dari API
   useEffect(() => {
-    const dummySeed: Record<string, { fileName: string; title: string }> = {
-      proposal: {
-        fileName: "Proposal_Hibah_Yayasan_Nurul_Iman_2027.pdf",
-        title: "Proposal Permohonan Hibah Tahun Anggaran 2027",
-      },
-      suratPermohonan: {
-        fileName: "Surat_Permohonan_Bupati_Sumbawa.pdf",
-        title: "Surat Permohonan Bantuan Hibah Daerah",
-      },
-      profilOrganisasi: {
-        fileName: "Profil_Yayasan_Nurul_Iman_Sumbawa.pdf",
-        title: "Profil Lembaga Yayasan Nurul Iman Sumbawa",
-      },
-      aktaPendirian: {
-        fileName: "Akta_Notaris_AHU_Yayasan_Nurul_Iman.pdf",
-        title: "Akta Pendirian & SK Kemenkumham",
-      },
-      skKepengurusan: {
-        fileName: "SK_Pengurus_Yayasan_2024_2029.pdf",
-        title: "Surat Keputusan Susunan Pengurus Aktif",
-      },
-      ktpKetua: {
-        fileName: "KTP_Ketua_Ahmad_Fauzi.pdf",
-        title: "Salinan KTP Ketua Yayasan - Ahmad Fauzi",
-      },
-    };
+    fetchProfile();
+    fetchOrganization();
+    fetchDocumentOptions();
+  }, [fetchProfile, fetchOrganization, fetchDocumentOptions]);
 
-    const initialDocs: Record<string, UploadedDoc> = {};
-    Object.entries(dummySeed).forEach(([key, meta]) => {
-      const dummyFile = createDummyPdfFile(meta.fileName, meta.title);
-      initialDocs[key] = {
-        file: dummyFile,
-        previewUrl: URL.createObjectURL(dummyFile),
-        sizeLabel: "420 KB",
-        uploadedAt: "10:15",
-      };
-    });
-
-    setDocuments(initialDocs);
-
+  // Bersihkan Object URL saat komponen unmount
+  useEffect(() => {
     return () => {
-      Object.values(initialDocs).forEach((d) =>
+      Object.values(documents).forEach((d) =>
         URL.revokeObjectURL(d.previewUrl),
       );
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // STEP 3 (Sebelumnya Step 5): Pernyataan Kebenaran Data
-  const [isDeclaredTrue, setIsDeclaredTrue] = useState(true);
+  const errorBanner = validationError || pengajuanError || optionError;
 
   const formatRupiahInput = (raw: string) => {
     const numeric = raw.replace(/\D/g, "");
     if (!numeric) return "";
     return Number(numeric).toLocaleString("id-ID");
+  };
+
+  const parseRupiahNumber = (formatted: string): number => {
+    const numeric = formatted.replace(/\D/g, "");
+    return numeric ? Number(numeric) : 0;
   };
 
   const formatBytes = (bytes: number) => {
@@ -293,32 +178,51 @@ export default function BuatPengajuanPage() {
     return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
   };
 
-  // Handler Upload File per Dokumen
+  // Handler Upload File berdasarkan GrantDocumentOptionType
   const handleFileChange = (
-    req: DocRequirement,
+    option: GrantDocumentOptionType,
     e: React.ChangeEvent<HTMLInputElement>,
   ) => {
-    setErrorBanner(null);
+    setValidationError(null);
+    clearPengajuanError();
+    clearOptionError();
+
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const maxBytes = req.maxSizeMB * 1024 * 1024;
-    if (file.size > maxBytes) {
-      setErrorBanner(
-        `Ukuran berkas "${req.label}" melebihi batas maksimal ${req.maxSizeMB} MB.`,
+    // Validasi MIME type jika tersedia dari option
+    if (
+      option.allowed_mime_types &&
+      option.allowed_mime_types.length > 0 &&
+      !option.allowed_mime_types.includes(file.type)
+    ) {
+      setValidationError(
+        `Format berkas "${option.display_name}" harus berupa ${formatMimeTypesLabel(option.allowed_mime_types)}.`,
       );
       e.target.value = "";
       return;
     }
 
-    if (documents[req.key]?.previewUrl) {
-      URL.revokeObjectURL(documents[req.key].previewUrl);
+    // Validasi ukuran file berdasarkan max_file_size_bytes
+    if (
+      option.max_file_size_bytes > 0 &&
+      file.size > option.max_file_size_bytes
+    ) {
+      setValidationError(
+        `Ukuran berkas "${option.display_name}" melebihi batas maksimal ${formatMaxFileSize(option.max_file_size_bytes)}.`,
+      );
+      e.target.value = "";
+      return;
+    }
+
+    if (documents[option.document_type]?.previewUrl) {
+      URL.revokeObjectURL(documents[option.document_type].previewUrl);
     }
 
     const previewUrl = URL.createObjectURL(file);
     setDocuments((prev) => ({
       ...prev,
-      [req.key]: {
+      [option.document_type]: {
         file,
         previewUrl,
         sizeLabel: formatBytes(file.size),
@@ -332,34 +236,37 @@ export default function BuatPengajuanPage() {
     e.target.value = "";
   };
 
-  const handleRemoveFile = (key: string) => {
-    if (documents[key]?.previewUrl) {
-      URL.revokeObjectURL(documents[key].previewUrl);
+  const handleRemoveFile = (documentType: string) => {
+    if (documents[documentType]?.previewUrl) {
+      URL.revokeObjectURL(documents[documentType].previewUrl);
     }
     setDocuments((prev) => {
       const updated = { ...prev };
-      delete updated[key];
+      delete updated[documentType];
       return updated;
     });
   };
 
   // Validasi Tiap Tahap
   const validateStep = (step: StepId): boolean => {
-    setErrorBanner(null);
+    setValidationError(null);
+    clearPengajuanError();
+    clearOptionError();
 
     if (step === 1) {
+      const requestedAmount = parseRupiahNumber(pengajuanForm.jumlahDana);
       if (
         !pengajuanForm.tahunPengajuan ||
         !pengajuanForm.bidangPengajuan ||
         !pengajuanForm.namaKegiatan.trim() ||
         !pengajuanForm.latarBelakang.trim() ||
         !pengajuanForm.maksudTujuan.trim() ||
-        !pengajuanForm.jumlahDana.trim() ||
+        requestedAmount <= 0 ||
         !pengajuanForm.lokasiKegiatan.trim() ||
         !pengajuanForm.waktuPelaksanaan.trim() ||
         !pengajuanForm.manfaatKegiatan.trim()
       ) {
-        setErrorBanner(
+        setValidationError(
           "Mohon lengkapi seluruh rincian Informasi Pengajuan sebelum melanjutkan.",
         );
         return false;
@@ -367,12 +274,12 @@ export default function BuatPengajuanPage() {
     }
 
     if (step === 2) {
-      const missingDocs = DOC_REQUIREMENTS.filter(
-        (doc) => doc.required && !documents[doc.key],
+      const missingDocs = documentOptions.filter(
+        (opt) => opt.is_required && !documents[opt.document_type],
       );
       if (missingDocs.length > 0) {
-        setErrorBanner(
-          `Masih terdapat ${missingDocs.length} dokumen wajib yang belum diunggah (${missingDocs[0].label}).`,
+        setValidationError(
+          `Masih terdapat ${missingDocs.length} dokumen wajib yang belum diunggah (${missingDocs[0].display_name}).`,
         );
         return false;
       }
@@ -390,49 +297,101 @@ export default function BuatPengajuanPage() {
   };
 
   const handlePrevStep = () => {
-    setErrorBanner(null);
+    setValidationError(null);
+    clearPengajuanError();
     if (currentStep > 1) {
       setCurrentStep((prev) => (prev - 1) as StepId);
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
-  const handleSaveDraft = () => {
-    setDraftSavedNotice(
-      `Draft pengajuan berhasil disimpan sementara pada pukul ${new Date().toLocaleTimeString(
-        "id-ID",
-        { hour: "2-digit", minute: "2-digit" },
-      )} WITA.`,
-    );
-    setTimeout(() => setDraftSavedNotice(null), 4000);
+  // Konversi form & dokumen dinamis dari documentOptions ke PemohonUpsertGrantApplicationDto
+  const buildUpsertPayload = (declarationAccepted: boolean) => {
+    const mappedDocuments: GrantDocument[] = documentOptions.map((opt) => ({
+      document_type: opt.document_type,
+      file: documents[opt.document_type]?.file ?? null,
+    }));
+
+    return {
+      fiscal_year: Number(pengajuanForm.tahunPengajuan),
+      field: pengajuanForm.bidangPengajuan,
+      activity_name: pengajuanForm.namaKegiatan.trim(),
+      background: pengajuanForm.latarBelakang.trim(),
+      objectives: pengajuanForm.maksudTujuan.trim(),
+      requested_amount: parseRupiahNumber(pengajuanForm.jumlahDana),
+      activity_location: pengajuanForm.lokasiKegiatan.trim(),
+      activity_period: pengajuanForm.waktuPelaksanaan.trim(),
+      expected_benefits: pengajuanForm.manfaatKegiatan.trim(),
+      declaration_accepted: declarationAccepted,
+      documents: mappedDocuments,
+    };
+  };
+
+  const handleSaveDraft = async () => {
+    setValidationError(null);
+    clearPengajuanError();
+
+    const result = await upsertPengajuan(buildUpsertPayload(isDeclaredTrue));
+    if (result.success) {
+      setDraftSavedNotice(
+        `Draft pengajuan berhasil disimpan pada pukul ${new Date().toLocaleTimeString(
+          "id-ID",
+          { hour: "2-digit", minute: "2-digit" },
+        )} WITA.`,
+      );
+      setTimeout(() => setDraftSavedNotice(null), 4000);
+    }
   };
 
   const handleFinalSubmit = async () => {
-    setErrorBanner(null);
+    setValidationError(null);
+    clearPengajuanError();
+
+    if (!validateStep(1) || !validateStep(2)) return;
+
     if (!isDeclaredTrue) {
-      setErrorBanner(
+      setValidationError(
         "Anda wajib mencentang pernyataan kebenaran data sebelum mengirim pengajuan.",
       );
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 900));
-      router.push("/dashboard/pemohon/riwayat-pengajuan?submitted=true");
-    } catch {
-      setErrorBanner(
-        "Gagal mengirim pengajuan. Silakan periksa koneksi Anda dan coba kembali.",
-      );
-    } finally {
-      setIsSubmitting(false);
+    const result = await upsertPengajuan(buildUpsertPayload(true));
+    if (result.success) {
+      router.push("/dashboard/pemohon/riwayat-pengajuan");
     }
   };
 
-  const requiredDocsCount = DOC_REQUIREMENTS.filter((d) => d.required).length;
-  const uploadedRequiredCount = DOC_REQUIREMENTS.filter(
-    (d) => d.required && Boolean(documents[d.key]),
+  const requiredDocsCount = documentOptions.filter((d) => d.is_required).length;
+  const uploadedRequiredCount = documentOptions.filter(
+    (d) => d.is_required && Boolean(documents[d.document_type]),
   ).length;
+
+  const pemohonNama = profile?.full_name || user?.full_name || "-";
+  const pemohonNik = profile?.nik || "-";
+  const pemohonBirthPlace = profile?.birth_place || "-";
+  const pemohonBirthDate = profile?.birth_date
+    ? profile.birth_date.split("T")[0]
+    : "-";
+  const pemohonPhone = user?.phone || "-";
+  const pemohonEmail = user?.email || "-";
+  const pemohonAddress = profile?.address || "-";
+
+  const orgName =
+    organization?.name ||
+    profile?.organization ||
+    "Belum melengkapi data lembaga";
+  const orgType = organization?.organization_type || "-";
+  const orgDeedNumber = organization?.deed_number || "-";
+  const orgEstablishedOn = organization?.established_on
+    ? organization.established_on.split("T")[0]
+    : "-";
+  const orgRegNumber = organization?.registration_number || "-";
+  const orgChairName = organization?.chair_name || "-";
+  const orgChairPhone = organization?.chair_phone || "-";
+  const orgSecretaryName = organization?.secretary_name || "-";
+  const orgTreasurerName = organization?.treasurer_name || "-";
+  const orgAddress = organization?.address || "-";
 
   return (
     <div className="space-y-6 pb-10">
@@ -465,9 +424,14 @@ export default function BuatPengajuanPage() {
         <button
           type="button"
           onClick={handleSaveDraft}
-          className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-2xs transition-colors self-start sm:self-auto cursor-pointer"
+          disabled={isSaving}
+          className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-60 text-slate-700 text-xs font-bold shadow-2xs transition-colors self-start sm:self-auto cursor-pointer"
         >
-          <Save className="w-3.5 h-3.5 text-app-primary" />
+          {isSaving ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-app-primary" />
+          ) : (
+            <Save className="w-3.5 h-3.5 text-app-primary" />
+          )}
           <span>Simpan Draft</span>
         </button>
       </div>
@@ -494,11 +458,10 @@ export default function BuatPengajuanPage() {
                 Lembaga & Pemohon Terdaftar
               </p>
               <p className="text-xs font-extrabold text-slate-900 truncate">
-                {PROFILE_DATA.organisasi.namaOrganisasi}
+                {orgName}
               </p>
               <p className="text-[11px] text-slate-600 truncate">
-                Pemohon: <strong>{PROFILE_DATA.pemohon.namaLengkap}</strong>{" "}
-                (NIK: {PROFILE_DATA.pemohon.nik})
+                Pemohon: <strong>{pemohonNama}</strong> (NIK: {pemohonNik})
               </p>
             </div>
           </div>
@@ -518,7 +481,6 @@ export default function BuatPengajuanPage() {
       ====================================================================== */}
       <div className="rounded-2xl bg-white border border-slate-200/80 p-4 sm:p-5 shadow-2xs">
         <div className="grid grid-cols-3 gap-2 relative max-w-2xl mx-auto">
-          {/* Garis Penghubung Horizontal */}
           <div
             aria-hidden="true"
             className="absolute top-4.5 left-[16%] right-[16%] h-0.5 bg-slate-200"
@@ -539,7 +501,8 @@ export default function BuatPengajuanPage() {
                 key={step.id}
                 type="button"
                 onClick={() => {
-                  setErrorBanner(null);
+                  setValidationError(null);
+                  clearPengajuanError();
                   setCurrentStep(step.id);
                 }}
                 className="relative z-10 flex flex-col items-center text-center group focus:outline-none cursor-pointer"
@@ -579,7 +542,7 @@ export default function BuatPengajuanPage() {
       </div>
 
       {/* =====================================================================
-          BANNER ERROR VALIDASI
+          BANNER ERROR VALIDASI / API
       ====================================================================== */}
       {errorBanner && (
         <div
@@ -609,7 +572,7 @@ export default function BuatPengajuanPage() {
             </h2>
           </div>
 
-          {currentStep === 2 && (
+          {currentStep === 2 && !isLoadingDocuments && (
             <span className="px-2.5 py-1 rounded-full bg-app-primary-50 border border-app-primary-200 text-app-primary text-[10.5px] font-bold">
               Dokumen Wajib: {uploadedRequiredCount}/{requiredDocsCount}
             </span>
@@ -627,6 +590,7 @@ export default function BuatPengajuanPage() {
                   Tahun Pengajuan <span className="text-red-500">*</span>
                 </label>
                 <select
+                  disabled={isSaving}
                   value={pengajuanForm.tahunPengajuan}
                   onChange={(e) =>
                     setPengajuanForm({
@@ -634,7 +598,7 @@ export default function BuatPengajuanPage() {
                       tahunPengajuan: e.target.value,
                     })
                   }
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15 disabled:opacity-60"
                 >
                   <option value="2026">Tahun Anggaran 2026</option>
                   <option value="2027">Tahun Anggaran 2027</option>
@@ -646,6 +610,7 @@ export default function BuatPengajuanPage() {
                   Bidang Pengajuan <span className="text-red-500">*</span>
                 </label>
                 <select
+                  disabled={isSaving}
                   value={pengajuanForm.bidangPengajuan}
                   onChange={(e) =>
                     setPengajuanForm({
@@ -653,7 +618,7 @@ export default function BuatPengajuanPage() {
                       bidangPengajuan: e.target.value,
                     })
                   }
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15 disabled:opacity-60"
                 >
                   <option value="Keagamaan & Sarana Ibadah">
                     Keagamaan & Sarana Ibadah
@@ -677,6 +642,7 @@ export default function BuatPengajuanPage() {
                 </label>
                 <input
                   type="text"
+                  disabled={isSaving}
                   value={pengajuanForm.namaKegiatan}
                   onChange={(e) =>
                     setPengajuanForm({
@@ -685,7 +651,7 @@ export default function BuatPengajuanPage() {
                     })
                   }
                   placeholder="Contoh: Permohonan Bantuan Rehabilitasi Ruang Belajar TPQ"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15 disabled:opacity-60"
                 />
               </div>
 
@@ -701,6 +667,7 @@ export default function BuatPengajuanPage() {
                   <input
                     type="text"
                     inputMode="numeric"
+                    disabled={isSaving}
                     value={pengajuanForm.jumlahDana}
                     onChange={(e) =>
                       setPengajuanForm({
@@ -709,7 +676,7 @@ export default function BuatPengajuanPage() {
                       })
                     }
                     placeholder="0"
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 pl-10 pr-3.5 py-2.5 text-xs font-bold text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 pl-10 pr-3.5 py-2.5 text-xs font-bold text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15 disabled:opacity-60"
                   />
                 </div>
               </div>
@@ -720,6 +687,7 @@ export default function BuatPengajuanPage() {
                 </label>
                 <input
                   type="text"
+                  disabled={isSaving}
                   value={pengajuanForm.waktuPelaksanaan}
                   onChange={(e) =>
                     setPengajuanForm({
@@ -728,7 +696,7 @@ export default function BuatPengajuanPage() {
                     })
                   }
                   placeholder="Contoh: Maret – Mei 2027"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15 disabled:opacity-60"
                 />
               </div>
 
@@ -738,6 +706,7 @@ export default function BuatPengajuanPage() {
                 </label>
                 <input
                   type="text"
+                  disabled={isSaving}
                   value={pengajuanForm.lokasiKegiatan}
                   onChange={(e) =>
                     setPengajuanForm({
@@ -746,7 +715,7 @@ export default function BuatPengajuanPage() {
                     })
                   }
                   placeholder="Desa/Kelurahan dan Kecamatan lokasi pelaksanaan kegiatan"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15 disabled:opacity-60"
                 />
               </div>
 
@@ -756,6 +725,7 @@ export default function BuatPengajuanPage() {
                 </label>
                 <textarea
                   rows={3}
+                  disabled={isSaving}
                   value={pengajuanForm.latarBelakang}
                   onChange={(e) =>
                     setPengajuanForm({
@@ -764,7 +734,7 @@ export default function BuatPengajuanPage() {
                     })
                   }
                   placeholder="Uraikan kondisi saat ini dan urgensi pengajuan bantuan hibah..."
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15 disabled:opacity-60"
                 />
               </div>
 
@@ -774,6 +744,7 @@ export default function BuatPengajuanPage() {
                 </label>
                 <textarea
                   rows={2}
+                  disabled={isSaving}
                   value={pengajuanForm.maksudTujuan}
                   onChange={(e) =>
                     setPengajuanForm({
@@ -782,7 +753,7 @@ export default function BuatPengajuanPage() {
                     })
                   }
                   placeholder="Jelaskan sasaran serta target yang ingin dicapai..."
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15 disabled:opacity-60"
                 />
               </div>
 
@@ -792,6 +763,7 @@ export default function BuatPengajuanPage() {
                 </label>
                 <textarea
                   rows={2}
+                  disabled={isSaving}
                   value={pengajuanForm.manfaatKegiatan}
                   onChange={(e) =>
                     setPengajuanForm({
@@ -800,14 +772,14 @@ export default function BuatPengajuanPage() {
                     })
                   }
                   placeholder="Uraikan dampak manfaat bagi masyarakat / anggota lembaga..."
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15 disabled:opacity-60"
                 />
               </div>
             </div>
           )}
 
           {/* -----------------------------------------------------------------
-              STEP 2: UPLOAD DOKUMEN
+              STEP 2: UPLOAD DOKUMEN (DIRENDER DARI documentOptions)
           ------------------------------------------------------------------ */}
           {currentStep === 2 && (
             <div className="space-y-4">
@@ -823,137 +795,179 @@ export default function BuatPengajuanPage() {
                 </p>
               </div>
 
-              <div className="space-y-3">
-                {DOC_REQUIREMENTS.map((req, idx) => {
-                  const uploaded = documents[req.key];
+              {isLoadingDocuments ? (
+                <div className="py-12 flex flex-col items-center justify-center text-center gap-2.5">
+                  <Loader2 className="w-6 h-6 animate-spin text-app-primary" />
+                  <p className="text-xs font-semibold text-slate-600">
+                    Memuat daftar persyaratan dokumen...
+                  </p>
+                </div>
+              ) : documentOptions.length === 0 ? (
+                <div className="py-10 rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 flex flex-col items-center justify-center text-center px-4 gap-3">
+                  <p className="text-xs font-bold text-slate-700">
+                    Daftar persyaratan dokumen belum tersedia.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => fetchDocumentOptions()}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-app-primary cursor-pointer"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Muat Ulang Daftar Dokumen</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {documentOptions.map((option, idx) => {
+                    const uploaded = documents[option.document_type];
+                    const acceptAttr = option.allowed_mime_types?.length
+                      ? option.allowed_mime_types.join(",")
+                      : ".pdf";
+                    const formatLabel = formatMimeTypesLabel(
+                      option.allowed_mime_types,
+                    );
+                    const maxSizeLabel = formatMaxFileSize(
+                      option.max_file_size_bytes,
+                    );
 
-                  return (
-                    <div
-                      key={req.key}
-                      className={`rounded-2xl border p-4 transition-all ${
-                        uploaded
-                          ? "bg-emerald-50/35 border-emerald-200"
-                          : "bg-slate-50/60 border-slate-200/80 hover:border-app-primary-300"
-                      }`}
-                    >
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div className="space-y-1 min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-[11px] font-extrabold text-slate-400">
-                              0{idx + 1}.
-                            </span>
-                            <h3 className="text-xs font-extrabold text-slate-900">
-                              {req.label}
-                            </h3>
+                    return (
+                      <div
+                        key={option.document_type}
+                        className={`rounded-2xl border p-4 transition-all ${
+                          uploaded
+                            ? "bg-emerald-50/35 border-emerald-200"
+                            : "bg-slate-50/60 border-slate-200/80 hover:border-app-primary-300"
+                        }`}
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="space-y-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-[11px] font-extrabold text-slate-400">
+                                {String(idx + 1).padStart(2, "0")}.
+                              </span>
+                              <h3 className="text-xs font-extrabold text-slate-900">
+                                {option.display_name}
+                              </h3>
 
-                            {uploaded ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[9.5px] font-bold">
-                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                Terunggah
-                              </span>
-                            ) : req.required ? (
-                              <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[9.5px] font-bold">
-                                Wajib
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded-full bg-slate-200/80 text-slate-600 text-[9.5px] font-bold">
-                                Opsional
-                              </span>
+                              {uploaded ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[9.5px] font-bold">
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                  Terunggah
+                                </span>
+                              ) : option.is_required ? (
+                                <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[9.5px] font-bold">
+                                  Wajib
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-full bg-slate-200/80 text-slate-600 text-[9.5px] font-bold">
+                                  Opsional
+                                </span>
+                              )}
+                            </div>
+
+                            <p className="text-[10.5px] text-slate-500">
+                              Format:{" "}
+                              <strong className="text-slate-700">
+                                {formatLabel}
+                              </strong>{" "}
+                              • Ukuran maksimal:{" "}
+                              <strong className="text-slate-700">
+                                {maxSizeLabel}
+                              </strong>
+                            </p>
+
+                            {uploaded && (
+                              <div className="inline-flex items-center gap-2 pt-1 text-[11px] font-semibold text-app-primary">
+                                <FileCheck2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                <span className="truncate max-w-[240px] sm:max-w-xs">
+                                  {uploaded.file.name}
+                                </span>
+                                <span className="text-slate-400 font-normal">
+                                  ({uploaded.sizeLabel})
+                                </span>
+                              </div>
                             )}
                           </div>
 
-                          <p className="text-[10.5px] text-slate-500">
-                            Format:{" "}
-                            <strong className="text-slate-700">
-                              {req.formatLabel}
-                            </strong>{" "}
-                            • Ukuran maksimal:{" "}
-                            <strong className="text-slate-700">
-                              {req.maxSizeMB} MB
-                            </strong>
-                            {req.note && ` — ${req.note}`}
-                          </p>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <input
+                              ref={(el) => {
+                                fileInputRefs.current[option.document_type] =
+                                  el;
+                              }}
+                              type="file"
+                              accept={acceptAttr}
+                              disabled={isSaving}
+                              onChange={(e) => handleFileChange(option, e)}
+                              className="hidden"
+                            />
 
-                          {uploaded && (
-                            <div className="inline-flex items-center gap-2 pt-1 text-[11px] font-semibold text-app-primary">
-                              <FileCheck2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                              <span className="truncate max-w-[240px] sm:max-w-xs">
-                                {uploaded.file.name}
-                              </span>
-                              <span className="text-slate-400 font-normal">
-                                ({uploaded.sizeLabel})
-                              </span>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <input
-                            ref={(el) => {
-                              fileInputRefs.current[req.key] = el;
-                            }}
-                            type="file"
-                            accept={req.accept}
-                            onChange={(e) => handleFileChange(req, e)}
-                            className="hidden"
-                          />
-
-                          {!uploaded ? (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                fileInputRefs.current[req.key]?.click()
-                              }
-                              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-app-primary hover:bg-app-primary-800 text-white text-[11px] font-bold shadow-2xs transition-colors cursor-pointer"
-                            >
-                              <UploadCloud className="w-3.5 h-3.5 text-app-secondary" />
-                              <span>Upload File</span>
-                            </button>
-                          ) : (
-                            <>
+                            {!uploaded ? (
                               <button
                                 type="button"
+                                disabled={isSaving}
                                 onClick={() =>
-                                  setPreviewModal({
-                                    title: req.label,
-                                    doc: uploaded,
-                                  })
+                                  fileInputRefs.current[
+                                    option.document_type
+                                  ]?.click()
                                 }
-                                title="Preview Dokumen"
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-app-primary-50 text-slate-700 hover:text-app-primary text-[11px] font-bold transition-colors cursor-pointer"
+                                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-app-primary hover:bg-app-primary-800 disabled:opacity-60 text-white text-[11px] font-bold shadow-2xs transition-colors cursor-pointer"
                               >
-                                <Eye className="w-3.5 h-3.5" />
-                                <span>Preview</span>
+                                <UploadCloud className="w-3.5 h-3.5 text-app-secondary" />
+                                <span>Upload File</span>
                               </button>
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setPreviewModal({
+                                      title: option.display_name,
+                                      doc: uploaded,
+                                    })
+                                  }
+                                  title="Preview Dokumen"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-app-primary-50 text-slate-700 hover:text-app-primary text-[11px] font-bold transition-colors cursor-pointer"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                  <span>Preview</span>
+                                </button>
 
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  fileInputRefs.current[req.key]?.click()
-                                }
-                                title="Ganti Dokumen"
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-amber-50 text-slate-700 hover:text-amber-700 text-[11px] font-bold transition-colors cursor-pointer"
-                              >
-                                <RefreshCw className="w-3.5 h-3.5" />
-                                <span>Ganti</span>
-                              </button>
+                                <button
+                                  type="button"
+                                  disabled={isSaving}
+                                  onClick={() =>
+                                    fileInputRefs.current[
+                                      option.document_type
+                                    ]?.click()
+                                  }
+                                  title="Ganti Dokumen"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-amber-50 disabled:opacity-60 text-slate-700 hover:text-amber-700 text-[11px] font-bold transition-colors cursor-pointer"
+                                >
+                                  <RefreshCw className="w-3.5 h-3.5" />
+                                  <span>Ganti</span>
+                                </button>
 
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveFile(req.key)}
-                                title="Hapus Dokumen"
-                                className="p-1.5 rounded-xl border border-red-200 bg-red-50/70 hover:bg-red-100 text-red-600 transition-colors cursor-pointer"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </>
-                          )}
+                                <button
+                                  type="button"
+                                  disabled={isSaving}
+                                  onClick={() =>
+                                    handleRemoveFile(option.document_type)
+                                  }
+                                  title="Hapus Dokumen"
+                                  className="p-1.5 rounded-xl border border-red-200 bg-red-50/70 hover:bg-red-100 disabled:opacity-60 text-red-600 transition-colors cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
@@ -981,23 +995,18 @@ export default function BuatPengajuanPage() {
                 <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                   <div>
                     <p className="text-[10.5px] text-slate-400">Nama Lengkap</p>
-                    <p className="font-bold text-slate-800">
-                      {PROFILE_DATA.pemohon.namaLengkap}
-                    </p>
+                    <p className="font-bold text-slate-800">{pemohonNama}</p>
                   </div>
                   <div>
                     <p className="text-[10.5px] text-slate-400">NIK</p>
-                    <p className="font-bold text-slate-800">
-                      {PROFILE_DATA.pemohon.nik}
-                    </p>
+                    <p className="font-bold text-slate-800">{pemohonNik}</p>
                   </div>
                   <div>
                     <p className="text-[10.5px] text-slate-400">
                       Tempat, Tanggal Lahir
                     </p>
                     <p className="font-semibold text-slate-800">
-                      {PROFILE_DATA.pemohon.tempatLahir},{" "}
-                      {PROFILE_DATA.pemohon.tanggalLahir}
+                      {pemohonBirthPlace}, {pemohonBirthDate}
                     </p>
                   </div>
                   <div>
@@ -1005,8 +1014,7 @@ export default function BuatPengajuanPage() {
                       Nomor HP / Email
                     </p>
                     <p className="font-semibold text-slate-800">
-                      {PROFILE_DATA.pemohon.nomorHp} •{" "}
-                      {PROFILE_DATA.pemohon.email}
+                      {pemohonPhone} • {pemohonEmail}
                     </p>
                   </div>
                   <div className="sm:col-span-2">
@@ -1014,7 +1022,7 @@ export default function BuatPengajuanPage() {
                       Alamat Lengkap Pemohon
                     </p>
                     <p className="font-semibold text-slate-800">
-                      {PROFILE_DATA.pemohon.alamatLengkap}
+                      {pemohonAddress}
                     </p>
                   </div>
                 </div>
@@ -1041,25 +1049,20 @@ export default function BuatPengajuanPage() {
                     <p className="text-[10.5px] text-slate-400">
                       Nama Organisasi
                     </p>
-                    <p className="font-bold text-slate-800">
-                      {PROFILE_DATA.organisasi.namaOrganisasi}
-                    </p>
+                    <p className="font-bold text-slate-800">{orgName}</p>
                   </div>
                   <div>
                     <p className="text-[10.5px] text-slate-400">
                       Jenis Organisasi
                     </p>
-                    <p className="font-semibold text-slate-800">
-                      {PROFILE_DATA.organisasi.jenisOrganisasi}
-                    </p>
+                    <p className="font-semibold text-slate-800">{orgType}</p>
                   </div>
                   <div>
                     <p className="text-[10.5px] text-slate-400">
                       Nomor & Tanggal Akta
                     </p>
                     <p className="font-semibold text-slate-800">
-                      {PROFILE_DATA.organisasi.nomorAktaPendirian} (
-                      {PROFILE_DATA.organisasi.tanggalPendirian})
+                      {orgDeedNumber} ({orgEstablishedOn})
                     </p>
                   </div>
                   <div>
@@ -1067,7 +1070,7 @@ export default function BuatPengajuanPage() {
                       Nomor SK Organisasi
                     </p>
                     <p className="font-semibold text-slate-800">
-                      {PROFILE_DATA.organisasi.nomorSkOrganisasi || "-"}
+                      {orgRegNumber}
                     </p>
                   </div>
                   <div>
@@ -1075,8 +1078,7 @@ export default function BuatPengajuanPage() {
                       Ketua / Pimpinan
                     </p>
                     <p className="font-semibold text-slate-800">
-                      {PROFILE_DATA.organisasi.namaKetua} (
-                      {PROFILE_DATA.organisasi.nomorHpKetua})
+                      {orgChairName} ({orgChairPhone})
                     </p>
                   </div>
                   <div>
@@ -1084,17 +1086,14 @@ export default function BuatPengajuanPage() {
                       Sekretaris & Bendahara
                     </p>
                     <p className="font-semibold text-slate-800">
-                      {PROFILE_DATA.organisasi.namaSekretaris} /{" "}
-                      {PROFILE_DATA.organisasi.namaBendahara}
+                      {orgSecretaryName} / {orgTreasurerName}
                     </p>
                   </div>
                   <div className="sm:col-span-2">
                     <p className="text-[10.5px] text-slate-400">
                       Alamat Organisasi
                     </p>
-                    <p className="font-semibold text-slate-800">
-                      {PROFILE_DATA.organisasi.alamatOrganisasi}
-                    </p>
+                    <p className="font-semibold text-slate-800">{orgAddress}</p>
                   </div>
                 </div>
               </div>
@@ -1128,7 +1127,7 @@ export default function BuatPengajuanPage() {
                       Jumlah Dana Dimohon
                     </p>
                     <p className="font-extrabold text-app-primary text-sm">
-                      Rp {pengajuanForm.jumlahDana}
+                      Rp {pengajuanForm.jumlahDana || "0"}
                     </p>
                   </div>
                   <div className="sm:col-span-2">
@@ -1182,7 +1181,7 @@ export default function BuatPengajuanPage() {
                 </div>
               </div>
 
-              {/* 4. Daftar Dokumen yang Diunggah & Preview */}
+              {/* 4. Daftar Dokumen yang Diunggah & Preview (Dari documentOptions) */}
               <div className="rounded-2xl border border-slate-200/80 overflow-hidden">
                 <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
                   <span className="text-xs font-extrabold text-slate-800">
@@ -1197,21 +1196,23 @@ export default function BuatPengajuanPage() {
                   </button>
                 </div>
                 <div className="divide-y divide-slate-100">
-                  {DOC_REQUIREMENTS.map((req) => {
-                    const doc = documents[req.key];
+                  {documentOptions.map((option) => {
+                    const doc = documents[option.document_type];
                     return (
                       <div
-                        key={req.key}
+                        key={option.document_type}
                         className="px-4 py-3 flex items-center justify-between gap-3 text-xs"
                       >
                         <div className="min-w-0">
                           <p className="font-bold text-slate-800 truncate">
-                            {req.label}
+                            {option.display_name}
                           </p>
                           <p className="text-[10.5px] text-slate-500 truncate">
                             {doc
                               ? `${doc.file.name} (${doc.sizeLabel})`
-                              : "Tidak diunggah (Opsional)"}
+                              : option.is_required
+                                ? "Belum diunggah (Wajib)"
+                                : "Tidak diunggah (Opsional)"}
                           </p>
                         </div>
 
@@ -1219,7 +1220,10 @@ export default function BuatPengajuanPage() {
                           <button
                             type="button"
                             onClick={() =>
-                              setPreviewModal({ title: req.label, doc })
+                              setPreviewModal({
+                                title: option.display_name,
+                                doc,
+                              })
                             }
                             className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-app-primary-50 hover:bg-app-primary text-app-primary hover:text-white text-[11px] font-bold transition-colors shrink-0 cursor-pointer"
                           >
@@ -1247,6 +1251,7 @@ export default function BuatPengajuanPage() {
                 <label className="flex items-start gap-2.5 cursor-pointer select-none">
                   <input
                     type="checkbox"
+                    disabled={isSaving}
                     checked={isDeclaredTrue}
                     onChange={(e) => setIsDeclaredTrue(e.target.checked)}
                     className="mt-0.5 w-4 h-4 rounded border-slate-300 text-app-primary focus:ring-app-primary/25 cursor-pointer shrink-0"
@@ -1273,8 +1278,8 @@ export default function BuatPengajuanPage() {
             <button
               type="button"
               onClick={handlePrevStep}
-              disabled={isSubmitting}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold transition-colors cursor-pointer"
+              disabled={isSaving}
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-60 text-slate-700 text-xs font-bold transition-colors cursor-pointer"
             >
               <ChevronLeft className="w-4 h-4" />
               <span>Kembali</span>
@@ -1296,10 +1301,10 @@ export default function BuatPengajuanPage() {
             <button
               type="button"
               onClick={handleFinalSubmit}
-              disabled={isSubmitting}
+              disabled={isSaving}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-app-primary to-app-primary-700 hover:from-app-primary-800 hover:to-app-primary disabled:opacity-60 text-white text-xs font-bold shadow-md shadow-app-primary/20 transition-all cursor-pointer"
             >
-              {isSubmitting ? (
+              {isSaving ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin text-app-secondary" />
                   <span>Mengirim Pengajuan...</span>

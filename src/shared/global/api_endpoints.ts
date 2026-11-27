@@ -8,6 +8,11 @@ const API_ENDPOINT = {
     VERIFY_EMAIL: `${baseUrl}/auth/verify-email`,
     ME: `${baseUrl}/auth/me`,
   },
+  OPTION: {
+    DOCUMENT: {
+      INDEX: `${baseUrl}/option/document-types`,
+    },
+  },
   PEMOHON: {
     PROFILE: {
       GET_BY_AUTH: `${baseUrl}/pemohon/profile`,
@@ -17,6 +22,11 @@ const API_ENDPOINT = {
     ORGANIZATION: {
       GET_BY_AUTH: `${baseUrl}/pemohon/organization`,
       UPSERT: `${baseUrl}/pemohon/organization`,
+    },
+    PENGAJUAN: {
+      UPSERT: `${baseUrl}/pemohon/submissions`,
+      DETAIL: (id: string) => `${baseUrl}/pemohon/submissions/${id}`,
+      HISTORY: `${baseUrl}/pemohon/submissions`,
     },
   },
 };
