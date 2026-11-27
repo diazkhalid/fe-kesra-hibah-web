@@ -377,10 +377,13 @@ export default function BuatPengajuanPage() {
   const pemohonEmail = user?.email || "-";
   const pemohonAddress = profile?.address || "-";
 
+  const profileOrgName =
+    typeof profile?.organization === "object" && profile?.organization !== null
+      ? (profile.organization as { name?: string }).name
+      : profile?.organization;
+
   const orgName =
-    organization?.name ||
-    profile?.organization ||
-    "Belum melengkapi data lembaga";
+    organization?.name || profileOrgName || "Belum melengkapi data lembaga";
   const orgType = organization?.organization_type || "-";
   const orgDeedNumber = organization?.deed_number || "-";
   const orgEstablishedOn = organization?.established_on

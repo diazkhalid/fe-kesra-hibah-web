@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useState, useMemo, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   FolderKanban,
-  Sparkles,
   Hourglass,
   CheckCircle2,
   XCircle,
@@ -24,29 +23,15 @@ import {
   User,
   X,
   FileCheck2,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
-
-type AdminSubmissionStatus =
-  | "menunggu_verifikasi"
-  | "terverifikasi"
-  | "ditolak";
-
-interface AdminSubmissionItem {
-  id: string;
-  nomorRegistrasi: string;
-  tanggalMasuk: string; // YYYY-MM-DD
-  tanggalLabel: string;
-  tahun: string;
-  namaOrganisasi: string;
-  namaPemohon: string;
-  perihalPengajuan: string;
-  jumlahDana: number;
-  status: AdminSubmissionStatus;
-  isNew?: boolean;
-}
+import { GrantApplicationStatus } from "@/features/pemohon-pengajuan/types/pengajuan.type";
+import { AdminGrantApplicationData } from "@/features/admin-pengajuan/types/pengajuan.type";
+import { useAdminPengajuan } from "@/features/admin-pengajuan/hooks/usePengajuan.hook";
 
 const STATUS_META: Record<
-  AdminSubmissionStatus,
+  GrantApplicationStatus,
   {
     label: string;
     badgeClass: string;
@@ -70,92 +55,6 @@ const STATUS_META: Record<
   },
 };
 
-const INITIAL_SUBMISSIONS: AdminSubmissionItem[] = [
-  {
-    id: "hb-2026-001",
-    nomorRegistrasi: "HIB-2026-001",
-    tanggalMasuk: "2026-11-16",
-    tanggalLabel: "16 Nov 2026",
-    tahun: "2026",
-    namaOrganisasi: "Yayasan Nurul Iman Sumbawa",
-    namaPemohon: "Ahmad Fauzi",
-    perihalPengajuan:
-      "Bantuan Pendidikan & Rehabilitasi Ruang Belajar TPQ Al-Hikmah",
-    jumlahDana: 50000000,
-    status: "menunggu_verifikasi",
-    isNew: true,
-  },
-  {
-    id: "hb-2026-002",
-    nomorRegistrasi: "HIB-2026-002",
-    tanggalMasuk: "2026-11-15",
-    tanggalLabel: "15 Nov 2026",
-    tahun: "2026",
-    namaOrganisasi: "Masjid Besar Al-Ikhlas Sumbawa",
-    namaPemohon: "H. Abdul Rahman",
-    perihalPengajuan:
-      "Bantuan Sarana Ibadah dan Pengadaan Sistem Tata Suara Masjid",
-    jumlahDana: 30000000,
-    status: "menunggu_verifikasi",
-    isNew: true,
-  },
-  {
-    id: "hb-2026-003",
-    nomorRegistrasi: "HIB-2026-003",
-    tanggalMasuk: "2026-11-14",
-    tanggalLabel: "14 Nov 2026",
-    tahun: "2026",
-    namaOrganisasi: "Lembaga Sosial Samawa Peduli",
-    namaPemohon: "Siti Aminah, S.Sos.",
-    perihalPengajuan:
-      "Bantuan Sosial Santunan Anak Yatim & Lansia Kecamatan Sumbawa",
-    jumlahDana: 25000000,
-    status: "menunggu_verifikasi",
-    isNew: false,
-  },
-  {
-    id: "hb-2026-004",
-    nomorRegistrasi: "HIB-2026-004",
-    tanggalMasuk: "2026-11-10",
-    tanggalLabel: "10 Nov 2026",
-    tahun: "2026",
-    namaOrganisasi: "Yayasan Nurul Iman Sumbawa",
-    namaPemohon: "Ahmad Fauzi",
-    perihalPengajuan:
-      "Pengadaan Perlengkapan Seni Islami dan Pembinaan Remaja Masjid",
-    jumlahDana: 18500000,
-    status: "terverifikasi",
-    isNew: false,
-  },
-  {
-    id: "hb-2026-006",
-    nomorRegistrasi: "HIB-2026-006",
-    tanggalMasuk: "2026-11-05",
-    tanggalLabel: "05 Nov 2026",
-    tahun: "2026",
-    namaOrganisasi: "Pondok Pesantren Darussalam Alas",
-    namaPemohon: "Ust. Syamsuddin",
-    perihalPengajuan: "Pembangunan Asrama Santri Putra dan Fasilitas Sanitasi",
-    jumlahDana: 75000000,
-    status: "terverifikasi",
-    isNew: false,
-  },
-  {
-    id: "hb-2025-009",
-    nomorRegistrasi: "HIB-2025-009",
-    tanggalMasuk: "2025-07-04",
-    tanggalLabel: "04 Jul 2025",
-    tahun: "2025",
-    namaOrganisasi: "Kelompok Pemuda Moyo Hilir",
-    namaPemohon: "Zulkifli Hasan",
-    perihalPengajuan:
-      "Permohonan Bantuan Pengadaan Perlengkapan Turnamen Olahraga",
-    jumlahDana: 40000000,
-    status: "ditolak",
-    isNew: false,
-  },
-];
-
 function formatRupiah(amount: number): string {
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
@@ -164,80 +63,78 @@ function formatRupiah(amount: number): string {
   }).format(amount);
 }
 
-// Helper membuat PDF proposal dummy untuk tombol Download Proposal
-function downloadDummyProposal(item: AdminSubmissionItem) {
-  const safeTitle = item.perihalPengajuan.replace(/[()\\]/g, "");
-  const pdfContent = `%PDF-1.4
-1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj
-2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj
-3 0 obj << /Type /Page /Parent 2 0 R /Resources << /Font << /F1 4 0 R >> >> /MediaBox [0 0 595 842] /Contents 5 0 R >> endobj
-4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> endobj
-5 0 obj << /Length 160 >>
-stream
-BT
-/F1 14 Tf
-50 760 Td
-(PROPOSAL PENGAJUAN HIBAH - ${item.nomorRegistrasi}) Tj
-0 -26 Td
-/F1 11 Tf
-(Organisasi: ${item.namaOrganisasi}) Tj
-0 -20 Td
-(Perihal: ${safeTitle}) Tj
-ET
-endstream
-endobj
-xref
-0 6
-0000000000 65535 f 
-0000000009 00000 n 
-0000000058 00000 n 
-0000000115 00000 n 
-0000000229 00000 n 
-0000000302 00000 n 
-trailer << /Size 6 /Root 1 0 R >>
-startxref
-512
-%%EOF`;
+function formatSubmittedDate(isoDate: string): string {
+  if (!isoDate) return "-";
+  const parsed = new Date(isoDate);
+  if (Number.isNaN(parsed.getTime())) return isoDate;
+  return parsed.toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
 
-  const blob = new Blob([pdfContent], { type: "application/pdf" });
+function downloadSummaryReceipt(item: AdminGrantApplicationData) {
+  const statusLabel = STATUS_META[item.status]?.label ?? item.status;
+  const content = `RINGKASAN PENGAJUAN HIBAH - ${item.submission_number}
+Pemerintah Kabupaten Sumbawa - Bagian Kesejahteraan Rakyat
+===========================================================
+Nomor Registrasi : ${item.submission_number}
+Tanggal Masuk    : ${formatSubmittedDate(item.submitted_at)}
+Tahun Anggaran   : ${item.fiscal_year}
+Organisasi       : ${item.organization_name}
+Pemohon          : ${item.applicant_name}
+Perihal          : ${item.activity_name}
+Jumlah Dana      : ${formatRupiah(item.requested_amount)}
+Status Terkini   : ${statusLabel}
+`;
+  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `Proposal_${item.nomorRegistrasi}.pdf`;
+  a.download = `Ringkasan_${item.submission_number}.txt`;
   a.click();
   URL.revokeObjectURL(url);
 }
 
 export default function AdminDataPengajuanPage() {
   const router = useRouter();
-  const [submissions] = useState<AdminSubmissionItem[]>(INITIAL_SUBMISSIONS);
+
+  const {
+    pengajuanList,
+    isLoadingList,
+    params,
+    pagination,
+    fetchPengajuanList,
+    updateFilters,
+    setPage,
+    setRowsPerPage,
+    resetFilters,
+    error: listError,
+    clearError,
+  } = useAdminPengajuan();
+
   const [toastNotice, setToastNotice] = useState<string | null>(null);
 
-  // State Input Pencarian & Filter
+  // State Input Pencarian & Filter Lokal sebelum tombol "Terapkan Filter" diklik
   const [nomorInput, setNomorInput] = useState("");
   const [pemohonInput, setPemohonInput] = useState("");
   const [organisasiInput, setOrganisasiInput] = useState("");
   const [tahunInput, setTahunInput] = useState("all");
-  const [tanggalInput, setTanggalInput] = useState("");
-  const [statusInput, setStatusInput] = useState<"all" | AdminSubmissionStatus>(
-    "all",
-  );
+  const [submittedFromInput, setSubmittedFromInput] = useState("");
+  const [submittedUntilInput, setSubmittedUntilInput] = useState("");
+  const [statusInput, setStatusInput] = useState<
+    "all" | GrantApplicationStatus
+  >("all");
 
-  // State Filter Aktif
-  const [appliedFilter, setAppliedFilter] = useState({
-    nomor: "",
-    pemohon: "",
-    organisasi: "",
-    tahun: "all",
-    tanggal: "",
-    status: "all" as "all" | AdminSubmissionStatus,
-  });
-
-  // Pagination & Action Menu
-  const [pageSize, setPageSize] = useState<number>(10);
-  const [currentPage, setCurrentPage] = useState<number>(1);
+  // Dropdown Action Menu
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+
+  // Fetch data otomatis setiap kali params (filter / page / rows_per_page) berubah
+  useEffect(() => {
+    fetchPengajuanList();
+  }, [fetchPengajuanList]);
 
   useEffect(() => {
     const handleOutside = (e: MouseEvent) => {
@@ -254,83 +151,32 @@ export default function AdminDataPengajuanPage() {
     setTimeout(() => setToastNotice(null), 3500);
   };
 
-  // A. Statistik Pengajuan
-  const stats = useMemo(() => {
-    return {
-      total: submissions.length,
-      baru: submissions.filter((s) => s.isNew).length,
-      menungguVerifikasi: submissions.filter(
-        (s) => s.status === "menunggu_verifikasi",
-      ).length,
-      terverifikasi: submissions.filter((s) => s.status === "terverifikasi")
-        .length,
-      ditolak: submissions.filter((s) => s.status === "ditolak").length,
-    };
-  }, [submissions]);
+  // Statistik ringkas berdasarkan total pagination & daftar halaman aktif
+  const stats = {
+    total: pagination.total,
+    menungguVerifikasi: pengajuanList.filter(
+      (s) => s.status === "menunggu_verifikasi",
+    ).length,
+    terverifikasi: pengajuanList.filter((s) => s.status === "terverifikasi")
+      .length,
+    ditolak: pengajuanList.filter((s) => s.status === "ditolak").length,
+  };
 
-  const availableYears = useMemo(() => {
-    return Array.from(new Set(submissions.map((s) => s.tahun))).sort(
-      (a, b) => Number(b) - Number(a),
-    );
-  }, [submissions]);
-
-  // Hasil Filter Tabel
-  const filteredData = useMemo(() => {
-    return submissions.filter((item) => {
-      const matchNomor =
-        !appliedFilter.nomor.trim() ||
-        item.nomorRegistrasi
-          .toLowerCase()
-          .includes(appliedFilter.nomor.trim().toLowerCase());
-
-      const matchPemohon =
-        !appliedFilter.pemohon.trim() ||
-        item.namaPemohon
-          .toLowerCase()
-          .includes(appliedFilter.pemohon.trim().toLowerCase());
-
-      const matchOrganisasi =
-        !appliedFilter.organisasi.trim() ||
-        item.namaOrganisasi
-          .toLowerCase()
-          .includes(appliedFilter.organisasi.trim().toLowerCase());
-
-      const matchTahun =
-        appliedFilter.tahun === "all" || item.tahun === appliedFilter.tahun;
-
-      const matchTanggal =
-        !appliedFilter.tanggal || item.tanggalMasuk === appliedFilter.tanggal;
-
-      const matchStatus =
-        appliedFilter.status === "all" || item.status === appliedFilter.status;
-
-      return (
-        matchNomor &&
-        matchPemohon &&
-        matchOrganisasi &&
-        matchTahun &&
-        matchTanggal &&
-        matchStatus
-      );
-    });
-  }, [submissions, appliedFilter]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredData.length / pageSize));
-  const safePage = Math.min(currentPage, totalPages);
-  const startIndex = (safePage - 1) * pageSize;
-  const paginatedData = filteredData.slice(startIndex, startIndex + pageSize);
+  const availableYears = [2027, 2026, 2025, 2024];
+  const startIndex = (pagination.page - 1) * pagination.rows_per_page;
 
   const handleApplyFilter = (e: React.FormEvent) => {
     e.preventDefault();
-    setAppliedFilter({
-      nomor: nomorInput,
-      pemohon: pemohonInput,
-      organisasi: organisasiInput,
-      tahun: tahunInput,
-      tanggal: tanggalInput,
-      status: statusInput,
+    clearError();
+    updateFilters({
+      submission_number: nomorInput.trim() || undefined,
+      applicant_name: pemohonInput.trim() || undefined,
+      organization_name: organisasiInput.trim() || undefined,
+      fiscal_year: tahunInput === "all" ? undefined : Number(tahunInput),
+      submitted_from: submittedFromInput || undefined,
+      submitted_until: submittedUntilInput || undefined,
+      status: statusInput === "all" ? undefined : statusInput,
     });
-    setCurrentPage(1);
   };
 
   const handleResetFilter = () => {
@@ -338,27 +184,29 @@ export default function AdminDataPengajuanPage() {
     setPemohonInput("");
     setOrganisasiInput("");
     setTahunInput("all");
-    setTanggalInput("");
+    setSubmittedFromInput("");
+    setSubmittedUntilInput("");
     setStatusInput("all");
-    setAppliedFilter({
-      nomor: "",
-      pemohon: "",
-      organisasi: "",
-      tahun: "all",
-      tanggal: "",
-      status: "all",
+    clearError();
+    resetFilters();
+  };
+
+  const handleQuickStatFilter = (status: "all" | GrantApplicationStatus) => {
+    setStatusInput(status);
+    clearError();
+    updateFilters({
+      status: status === "all" ? undefined : status,
     });
-    setCurrentPage(1);
   };
 
-  const handleDownloadProposalClick = (item: AdminSubmissionItem) => {
+  const handleDownloadSummaryClick = (item: AdminGrantApplicationData) => {
     setOpenMenuId(null);
-    downloadDummyProposal(item);
-    showToast(`File Proposal_${item.nomorRegistrasi}.pdf berhasil diunduh.`);
+    downloadSummaryReceipt(item);
+    showToast(`Ringkasan ${item.submission_number} berhasil diunduh.`);
   };
 
-  // D. Menu Aksi Admin (Lihat Detail, Lihat Dokumen, Download Proposal, Mulai Verifikasi)
-  const renderAdminActionsMenu = (item: AdminSubmissionItem) => (
+  // Menu Aksi Admin
+  const renderAdminActionsMenu = (item: AdminGrantApplicationData) => (
     <>
       <Link
         href={`/dashboard/admin/data-pengajuan/${item.id}`}
@@ -380,11 +228,11 @@ export default function AdminDataPengajuanPage() {
 
       <button
         type="button"
-        onClick={() => handleDownloadProposalClick(item)}
+        onClick={() => handleDownloadSummaryClick(item)}
         className="w-full flex items-center gap-2 px-3.5 py-2 text-[11.5px] font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
       >
         <Download className="w-3.5 h-3.5 text-emerald-600" />
-        <span>Download Proposal</span>
+        <span>Unduh Ringkasan</span>
       </button>
 
       <div className="my-1 border-t border-slate-100" />
@@ -463,23 +311,39 @@ export default function AdminDataPengajuanPage() {
         </div>
       )}
 
+      {/* Banner Error API */}
+      {listError && (
+        <div
+          role="alert"
+          className="flex items-center justify-between gap-3 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-xs font-semibold text-red-700"
+        >
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+            <span>{listError}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => fetchPengajuanList()}
+            className="px-3 py-1 rounded-lg bg-white border border-red-200 text-red-700 hover:bg-red-100 text-[11px] font-bold cursor-pointer shrink-0"
+          >
+            Coba Lagi
+          </button>
+        </div>
+      )}
+
       {/* =====================================================================
-          A. STATISTIK PENGAJUAN (5 CARD)
+          A. STATISTIK PENGAJUAN (4 CARD SESUAI STATUS API)
       ====================================================================== */}
       <section
         aria-label="Statistik Data Pengajuan"
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5"
       >
         {/* 1. Total Pengajuan */}
         <button
           type="button"
-          onClick={() => {
-            setStatusInput("all");
-            setAppliedFilter((prev) => ({ ...prev, status: "all" }));
-            setCurrentPage(1);
-          }}
+          onClick={() => handleQuickStatFilter("all")}
           className={`text-left rounded-2xl bg-white border p-4 shadow-2xs transition-all cursor-pointer ${
-            appliedFilter.status === "all"
+            !params.status
               ? "border-app-primary ring-2 ring-app-primary/15"
               : "border-slate-200/80 hover:border-app-primary-300"
           }`}
@@ -500,37 +364,12 @@ export default function AdminDataPengajuanPage() {
           </p>
         </button>
 
-        {/* 2. Pengajuan Baru */}
-        <div className="rounded-2xl bg-white border border-slate-200/80 p-4 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-500">
-              Pengajuan Baru
-            </span>
-            <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-              <Sparkles className="w-4 h-4 stroke-[2.2]" />
-            </div>
-          </div>
-          <p className="mt-2.5 text-2xl font-extrabold text-slate-900">
-            {stats.baru}
-          </p>
-          <p className="mt-0.5 text-[10px] font-semibold text-indigo-600">
-            Masuk terbaru
-          </p>
-        </div>
-
-        {/* 3. Menunggu Verifikasi */}
+        {/* 2. Menunggu Verifikasi */}
         <button
           type="button"
-          onClick={() => {
-            setStatusInput("menunggu_verifikasi");
-            setAppliedFilter((prev) => ({
-              ...prev,
-              status: "menunggu_verifikasi",
-            }));
-            setCurrentPage(1);
-          }}
+          onClick={() => handleQuickStatFilter("menunggu_verifikasi")}
           className={`text-left rounded-2xl bg-white border p-4 shadow-2xs transition-all cursor-pointer ${
-            appliedFilter.status === "menunggu_verifikasi"
+            params.status === "menunggu_verifikasi"
               ? "border-sky-500 ring-2 ring-sky-500/15"
               : "border-slate-200/80 hover:border-sky-300"
           }`}
@@ -551,16 +390,12 @@ export default function AdminDataPengajuanPage() {
           </p>
         </button>
 
-        {/* 4. Terverifikasi */}
+        {/* 3. Terverifikasi */}
         <button
           type="button"
-          onClick={() => {
-            setStatusInput("terverifikasi");
-            setAppliedFilter((prev) => ({ ...prev, status: "terverifikasi" }));
-            setCurrentPage(1);
-          }}
+          onClick={() => handleQuickStatFilter("terverifikasi")}
           className={`text-left rounded-2xl bg-white border p-4 shadow-2xs transition-all cursor-pointer ${
-            appliedFilter.status === "terverifikasi"
+            params.status === "terverifikasi"
               ? "border-emerald-500 ring-2 ring-emerald-500/15"
               : "border-slate-200/80 hover:border-emerald-300"
           }`}
@@ -581,16 +416,12 @@ export default function AdminDataPengajuanPage() {
           </p>
         </button>
 
-        {/* 5. Ditolak */}
+        {/* 4. Ditolak */}
         <button
           type="button"
-          onClick={() => {
-            setStatusInput("ditolak");
-            setAppliedFilter((prev) => ({ ...prev, status: "ditolak" }));
-            setCurrentPage(1);
-          }}
+          onClick={() => handleQuickStatFilter("ditolak")}
           className={`text-left rounded-2xl bg-white border p-4 shadow-2xs transition-all cursor-pointer ${
-            appliedFilter.status === "ditolak"
+            params.status === "ditolak"
               ? "border-red-500 ring-2 ring-red-500/15"
               : "border-slate-200/80 hover:border-red-300"
           }`}
@@ -613,16 +444,16 @@ export default function AdminDataPengajuanPage() {
       </section>
 
       {/* =====================================================================
-          B. PENCARIAN DAN FILTER (6 KRITERIA)
+          B. PENCARIAN DAN FILTER (SESUAI AdminGrantApplicationAdminParams)
       ====================================================================== */}
       <section
         aria-label="Pencarian dan Filter Data Pengajuan"
         className="rounded-2xl bg-white border border-slate-200/80 p-4 sm:p-5 shadow-2xs"
       >
         <form onSubmit={handleApplyFilter} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
-            {/* 1. Nomor Pengajuan */}
-            <div className="space-y-1.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3">
+            {/* 1. Nomor Pengajuan (submission_number) */}
+            <div className="lg:col-span-3 space-y-1.5">
               <label className="block text-[11px] font-bold text-slate-700">
                 Nomor Pengajuan
               </label>
@@ -638,8 +469,8 @@ export default function AdminDataPengajuanPage() {
               </div>
             </div>
 
-            {/* 2. Nama Pemohon */}
-            <div className="space-y-1.5">
+            {/* 2. Nama Pemohon (applicant_name) */}
+            <div className="lg:col-span-3 space-y-1.5">
               <label className="block text-[11px] font-bold text-slate-700">
                 Nama Pemohon
               </label>
@@ -647,13 +478,13 @@ export default function AdminDataPengajuanPage() {
                 type="text"
                 value={pemohonInput}
                 onChange={(e) => setPemohonInput(e.target.value)}
-                placeholder="Cari pemohon..."
+                placeholder="Cari nama pemohon..."
                 className="w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
               />
             </div>
 
-            {/* 3. Nama Organisasi */}
-            <div className="space-y-1.5">
+            {/* 3. Nama Organisasi (organization_name) */}
+            <div className="lg:col-span-3 space-y-1.5">
               <label className="block text-[11px] font-bold text-slate-700">
                 Nama Organisasi
               </label>
@@ -661,15 +492,15 @@ export default function AdminDataPengajuanPage() {
                 type="text"
                 value={organisasiInput}
                 onChange={(e) => setOrganisasiInput(e.target.value)}
-                placeholder="Cari lembaga..."
+                placeholder="Cari nama lembaga..."
                 className="w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
               />
             </div>
 
-            {/* 4. Tahun Pengajuan */}
-            <div className="space-y-1.5">
+            {/* 4. Tahun Pengajuan (fiscal_year) */}
+            <div className="lg:col-span-3 space-y-1.5">
               <label className="block text-[11px] font-bold text-slate-700">
-                Tahun Pengajuan
+                Tahun Anggaran
               </label>
               <select
                 value={tahunInput}
@@ -678,28 +509,15 @@ export default function AdminDataPengajuanPage() {
               >
                 <option value="all">Semua Tahun</option>
                 {availableYears.map((yr) => (
-                  <option key={yr} value={yr}>
+                  <option key={yr} value={String(yr)}>
                     Tahun {yr}
                   </option>
                 ))}
               </select>
             </div>
 
-            {/* 5. Tanggal Pengajuan */}
-            <div className="space-y-1.5">
-              <label className="block text-[11px] font-bold text-slate-700">
-                Tanggal Pengajuan
-              </label>
-              <input
-                type="date"
-                value={tanggalInput}
-                onChange={(e) => setTanggalInput(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
-              />
-            </div>
-
-            {/* 6. Status Pengajuan */}
-            <div className="space-y-1.5">
+            {/* 5. Status Pengajuan (status) */}
+            <div className="lg:col-span-4 space-y-1.5">
               <label className="block text-[11px] font-bold text-slate-700">
                 Status Pengajuan
               </label>
@@ -707,7 +525,7 @@ export default function AdminDataPengajuanPage() {
                 value={statusInput}
                 onChange={(e) =>
                   setStatusInput(
-                    e.target.value as "all" | AdminSubmissionStatus,
+                    e.target.value as "all" | GrantApplicationStatus,
                   )
                 }
                 className="w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
@@ -718,13 +536,39 @@ export default function AdminDataPengajuanPage() {
                 <option value="ditolak">Ditolak</option>
               </select>
             </div>
+
+            {/* 6. Rentang Tanggal Masuk (submitted_from - submitted_until) */}
+            <div className="lg:col-span-4 space-y-1.5">
+              <label className="block text-[11px] font-bold text-slate-700">
+                Tanggal Masuk (Dari)
+              </label>
+              <input
+                type="date"
+                value={submittedFromInput}
+                onChange={(e) => setSubmittedFromInput(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
+              />
+            </div>
+
+            <div className="lg:col-span-4 space-y-1.5">
+              <label className="block text-[11px] font-bold text-slate-700">
+                Tanggal Masuk (Sampai)
+              </label>
+              <input
+                type="date"
+                value={submittedUntilInput}
+                onChange={(e) => setSubmittedUntilInput(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15"
+              />
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-slate-100">
             <button
               type="button"
               onClick={handleResetFilter}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-xs font-semibold transition-colors cursor-pointer"
+              disabled={isLoadingList}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-60 text-slate-600 text-xs font-semibold transition-colors cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>Reset Filter</span>
@@ -732,9 +576,14 @@ export default function AdminDataPengajuanPage() {
 
             <button
               type="submit"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-app-primary hover:bg-app-primary-800 text-white text-xs font-bold shadow-2xs transition-colors cursor-pointer"
+              disabled={isLoadingList}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-app-primary hover:bg-app-primary-800 disabled:opacity-60 text-white text-xs font-bold shadow-2xs transition-colors cursor-pointer"
             >
-              <Filter className="w-3.5 h-3.5 text-app-secondary" />
+              {isLoadingList ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-app-secondary" />
+              ) : (
+                <Filter className="w-3.5 h-3.5 text-app-secondary" />
+              )}
               <span>Terapkan Filter</span>
             </button>
           </div>
@@ -742,7 +591,7 @@ export default function AdminDataPengajuanPage() {
       </section>
 
       {/* =====================================================================
-          C. TABEL DATA PENGAJUAN (9 KOLOM) & D. AKSI ADMIN
+          C. TABEL DATA PENGAJUAN & D. AKSI ADMIN
       ====================================================================== */}
       <section
         aria-label="Tabel Data Pengajuan"
@@ -769,7 +618,16 @@ export default function AdminDataPengajuanPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs">
-              {paginatedData.length === 0 ? (
+              {isLoadingList ? (
+                <tr>
+                  <td colSpan={9} className="py-14 text-center">
+                    <div className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500">
+                      <Loader2 className="w-4 h-4 animate-spin text-app-primary" />
+                      <span>Memuat data pengajuan hibah...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : pengajuanList.length === 0 ? (
                 <tr>
                   <td
                     colSpan={9}
@@ -780,8 +638,9 @@ export default function AdminDataPengajuanPage() {
                   </td>
                 </tr>
               ) : (
-                paginatedData.map((item, idx) => {
-                  const statusInfo = STATUS_META[item.status];
+                pengajuanList.map((item, idx) => {
+                  const statusInfo =
+                    STATUS_META[item.status] ?? STATUS_META.menunggu_verifikasi;
                   const isMenuOpen = openMenuId === item.id;
 
                   return (
@@ -796,23 +655,16 @@ export default function AdminDataPengajuanPage() {
 
                       {/* 2. Nomor Registrasi */}
                       <td className="py-3.5 px-3 align-top whitespace-nowrap">
-                        <div className="flex flex-col items-start gap-1">
-                          <span className="font-extrabold text-app-primary text-[11.5px]">
-                            {item.nomorRegistrasi}
-                          </span>
-                          {item.isNew && (
-                            <span className="px-1.5 py-0.2 rounded bg-indigo-50 border border-indigo-200 text-indigo-700 text-[9px] font-extrabold uppercase">
-                              Baru
-                            </span>
-                          )}
-                        </div>
+                        <span className="font-extrabold text-app-primary text-[11.5px]">
+                          {item.submission_number}
+                        </span>
                       </td>
 
                       {/* 3. Tanggal Masuk */}
                       <td className="py-3.5 px-3 align-top whitespace-nowrap text-slate-600">
                         <div className="flex items-center gap-1.5 text-[11px]">
                           <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                          <span>{item.tanggalLabel}</span>
+                          <span>{formatSubmittedDate(item.submitted_at)}</span>
                         </div>
                       </td>
 
@@ -821,7 +673,7 @@ export default function AdminDataPengajuanPage() {
                         <div className="flex items-start gap-1.5">
                           <Building2 className="w-3.5 h-3.5 text-app-secondary-600 shrink-0 mt-0.5" />
                           <span className="font-bold text-slate-800 leading-snug line-clamp-2">
-                            {item.namaOrganisasi}
+                            {item.organization_name}
                           </span>
                         </div>
                       </td>
@@ -830,20 +682,20 @@ export default function AdminDataPengajuanPage() {
                       <td className="py-3.5 px-3 align-top whitespace-nowrap">
                         <div className="flex items-center gap-1.5 text-slate-700 font-medium">
                           <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span>{item.namaPemohon}</span>
+                          <span>{item.applicant_name}</span>
                         </div>
                       </td>
 
                       {/* 6. Perihal Pengajuan */}
                       <td className="py-3.5 px-3 align-top max-w-[210px]">
                         <p className="font-semibold text-slate-700 leading-snug line-clamp-2">
-                          {item.perihalPengajuan}
+                          {item.activity_name}
                         </p>
                       </td>
 
                       {/* 7. Jumlah Dana */}
                       <td className="py-3.5 px-3 align-top whitespace-nowrap font-extrabold text-slate-900">
-                        {formatRupiah(item.jumlahDana)}
+                        {formatRupiah(item.requested_amount)}
                       </td>
 
                       {/* 8. Status */}
@@ -858,7 +710,7 @@ export default function AdminDataPengajuanPage() {
                         </span>
                       </td>
 
-                      {/* 9. Aksi (Tombol Detail Seragam + Menu Titik 3 Vertikal) */}
+                      {/* 9. Aksi */}
                       <td className="py-3.5 px-3 align-top text-right whitespace-nowrap">
                         <div
                           ref={isMenuOpen ? menuRef : null}
@@ -904,13 +756,21 @@ export default function AdminDataPengajuanPage() {
 
         {/* MOBILE & TABLET CARDS (< xl) */}
         <div className="xl:hidden divide-y divide-slate-100">
-          {paginatedData.length === 0 ? (
+          {isLoadingList ? (
+            <div className="p-10 text-center">
+              <div className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500">
+                <Loader2 className="w-4 h-4 animate-spin text-app-primary" />
+                <span>Memuat data pengajuan hibah...</span>
+              </div>
+            </div>
+          ) : pengajuanList.length === 0 ? (
             <div className="p-8 text-center text-xs text-slate-500">
               Tidak ada data pengajuan yang sesuai dengan filter.
             </div>
           ) : (
-            paginatedData.map((item, idx) => {
-              const statusInfo = STATUS_META[item.status];
+            pengajuanList.map((item, idx) => {
+              const statusInfo =
+                STATUS_META[item.status] ?? STATUS_META.menunggu_verifikasi;
               const isMenuOpen = openMenuId === item.id;
 
               return (
@@ -921,13 +781,8 @@ export default function AdminDataPengajuanPage() {
                         #{startIndex + idx + 1}
                       </span>
                       <span className="text-xs font-extrabold text-app-primary">
-                        {item.nomorRegistrasi}
+                        {item.submission_number}
                       </span>
-                      {item.isNew && (
-                        <span className="px-1.5 py-0.2 rounded bg-indigo-50 border border-indigo-200 text-indigo-700 text-[9px] font-extrabold">
-                          BARU
-                        </span>
-                      )}
                     </div>
 
                     <span
@@ -942,19 +797,20 @@ export default function AdminDataPengajuanPage() {
 
                   <div>
                     <p className="text-xs font-bold text-slate-900">
-                      {item.namaOrganisasi}
+                      {item.organization_name}
                     </p>
                     <p className="text-[11px] text-slate-500">
-                      Pemohon: {item.namaPemohon} • {item.tanggalLabel}
+                      Pemohon: {item.applicant_name} •{" "}
+                      {formatSubmittedDate(item.submitted_at)}
                     </p>
                     <p className="text-xs text-slate-700 mt-1 leading-snug">
-                      {item.perihalPengajuan}
+                      {item.activity_name}
                     </p>
                   </div>
 
                   <div className="flex items-center justify-between pt-2 border-t border-slate-100">
                     <span className="text-xs font-extrabold text-slate-900">
-                      {formatRupiah(item.jumlahDana)}
+                      {formatRupiah(item.requested_amount)}
                     </span>
 
                     <div
@@ -993,18 +849,16 @@ export default function AdminDataPengajuanPage() {
           )}
         </div>
 
-        {/* PAGINATION */}
+        {/* PAGINATION (BACKEND PAGINATION META) */}
         <div className="px-4 py-3.5 bg-slate-50/70 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
           <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-600">
             <div className="flex items-center gap-1.5">
               <span>Tampilkan</span>
               <select
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-                className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold text-slate-800 focus:border-app-primary focus:outline-none"
+                value={pagination.rows_per_page}
+                disabled={isLoadingList}
+                onChange={(e) => setRowsPerPage(Number(e.target.value))}
+                className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold text-slate-800 focus:border-app-primary focus:outline-none disabled:opacity-60"
               >
                 <option value={10}>10</option>
                 <option value={25}>25</option>
@@ -1019,14 +873,17 @@ export default function AdminDataPengajuanPage() {
             <span>
               Menampilkan{" "}
               <strong className="text-slate-800">
-                {filteredData.length === 0 ? 0 : startIndex + 1}
+                {pagination.total === 0 ? 0 : startIndex + 1}
               </strong>
               –
               <strong className="text-slate-800">
-                {Math.min(startIndex + pageSize, filteredData.length)}
+                {Math.min(
+                  startIndex + pagination.rows_per_page,
+                  pagination.total,
+                )}
               </strong>{" "}
               dari{" "}
-              <strong className="text-slate-800">{filteredData.length}</strong>{" "}
+              <strong className="text-slate-800">{pagination.total}</strong>{" "}
               pengajuan
             </span>
           </div>
@@ -1034,21 +891,25 @@ export default function AdminDataPengajuanPage() {
           <div className="flex items-center gap-1">
             <button
               type="button"
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={safePage <= 1}
+              onClick={() => setPage(pagination.page - 1)}
+              disabled={isLoadingList || pagination.page <= 1}
               className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-45 text-[11px] font-semibold text-slate-700 cursor-pointer disabled:cursor-not-allowed"
             >
               <ChevronLeft className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Sebelumnya</span>
             </button>
 
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
+            {Array.from(
+              { length: pagination.total_pages },
+              (_, i) => i + 1,
+            ).map((num) => (
               <button
                 key={num}
                 type="button"
-                onClick={() => setCurrentPage(num)}
-                className={`w-8 h-8 rounded-lg text-[11px] font-extrabold transition-colors cursor-pointer ${
-                  num === safePage
+                disabled={isLoadingList}
+                onClick={() => setPage(num)}
+                className={`w-8 h-8 rounded-lg text-[11px] font-extrabold transition-colors cursor-pointer disabled:opacity-60 ${
+                  num === pagination.page
                     ? "bg-app-primary text-white shadow-2xs"
                     : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
                 }`}
@@ -1059,8 +920,10 @@ export default function AdminDataPengajuanPage() {
 
             <button
               type="button"
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={safePage >= totalPages}
+              onClick={() => setPage(pagination.page + 1)}
+              disabled={
+                isLoadingList || pagination.page >= pagination.total_pages
+              }
               className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-45 text-[11px] font-semibold text-slate-700 cursor-pointer disabled:cursor-not-allowed"
             >
               <span className="hidden sm:inline">Berikutnya</span>

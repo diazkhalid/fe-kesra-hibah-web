@@ -29,6 +29,14 @@ const API_ENDPOINT = {
       HISTORY: `${baseUrl}/pemohon/submissions`,
     },
   },
+  ADMIN: {
+    PENGAJUAN: {
+      INDEX: `${baseUrl}/admin/submissions`,
+      DETAIL: (id: string) => `${baseUrl}/admin/submissions/${id}`,
+      VERIFICATION: (id: string) =>
+        `${baseUrl}/admin/submissions/${id}/verification`,
+    },
+  },
 };
 
 export default API_ENDPOINT;

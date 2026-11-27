@@ -113,11 +113,19 @@ export interface GrantApplicationDocument {
 }
 
 export interface GrantVerificationReview {
-  // Sesuaikan dengan response verification_reviews (menyusul)
+  id: string;
+  submission_id: string;
+  verifier_user_id: string;
+  decision: GrantApplicationStatus;
+  note: string;
+  created_at: string;
 }
 
 export interface GrantStatusHistory {
-  // Sesuaikan dengan response status_history (menyusul)
+  status: GrantApplicationStatus;
+  title: string;
+  description: string;
+  occurred_at: string;
 }
 
 export type GrantDocumentReviewStatus =

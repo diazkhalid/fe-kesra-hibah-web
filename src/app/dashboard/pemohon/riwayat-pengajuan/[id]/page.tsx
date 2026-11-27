@@ -28,7 +28,7 @@ import {
   AlertCircle,
   ArrowLeft,
 } from "lucide-react";
-import APP_CONFIG from "@/shared/global/app_config"; // Sesuaikan path import APP_CONFIG Anda
+import APP_CONFIG from "@/shared/global/app_config";
 import {
   GrantApplicationDocument,
   GrantApplicationStatus,
@@ -229,6 +229,16 @@ export default function DetailPengajuanPage() {
         )
       : 0;
 
+  // Review terbaru dari Tim Verifikator (berdasarkan created_at paling baru)
+  const sortedReviews = [...(submission.verification_reviews || [])].sort(
+    (a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  );
+  const latestReview = sortedReviews[0] ?? null;
+
+  // Linimasa status dari status_history
+  const statusHistoryList = submission.status_history || [];
+
   const handleDownloadReceipt = () => {
     const receiptText = `BUKTI REGISTRASI PENGAJUAN HIBAH\nPemerintah Kabupaten Sumbawa - Bagian Kesejahteraan Rakyat\n====================================================\nNomor Pengajuan : ${submission.submission_number}\nTanggal         : ${submittedDateTime.date} (${submittedDateTime.time})\nPemohon         : ${submission.applicant.full_name} (NIK: ${submission.applicant.nik})\nOrganisasi      : ${submission.organization.name}\nKegiatan        : ${submission.activity.activity_name}\nJumlah Dana     : ${formatRupiah(submission.requested_amount)}\nStatus Terkini  : ${statusInfo.label}\n`;
     const blob = new Blob([receiptText], { type: "text/plain;charset=utf-8" });
@@ -369,6 +379,53 @@ export default function DetailPengajuanPage() {
             </p>
           </div>
         </div>
+
+        {/* Box Keterangan Hasil Verifikasi dari verification_reviews */}
+        {latestReview && (
+          <div
+            className={`relative mt-5 rounded-2xl p-4 border ${
+              latestReview.decision === "terverifikasi"
+                ? "bg-emerald-950/60 border-emerald-400/30 text-emerald-100"
+                : latestReview.decision === "ditolak"
+                  ? "bg-red-950/60 border-red-400/30 text-red-100"
+                  : "bg-white/10 border-white/20 text-app-primary-100"
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              <div
+                className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+                  latestReview.decision === "terverifikasi"
+                    ? "bg-emerald-500/20 text-emerald-300"
+                    : latestReview.decision === "ditolak"
+                      ? "bg-red-500/20 text-red-300"
+                      : "bg-white/15 text-app-secondary-200"
+                }`}
+              >
+                {latestReview.decision === "terverifikasi" ? (
+                  <Award className="w-4 h-4" />
+                ) : (
+                  <ShieldAlert className="w-4 h-4" />
+                )}
+              </div>
+              <div className="space-y-1 text-xs">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-extrabold text-white">
+                    {latestReview.decision === "terverifikasi"
+                      ? "Hasil Verifikasi Administrasi"
+                      : latestReview.decision === "ditolak"
+                        ? "Alasan Penolakan Pengajuan"
+                        : "Catatan Verifikator"}
+                  </p>
+                  <span className="text-[10px] opacity-80">
+                    ({formatDateTime(latestReview.created_at).date} •{" "}
+                    {formatDateTime(latestReview.created_at).time})
+                  </span>
+                </div>
+                <p className="leading-relaxed">{latestReview.note}</p>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* =====================================================================
@@ -858,7 +915,7 @@ export default function DetailPengajuanPage() {
 
         {/* KOLOM KANAN (4 KOLOM): RIWAYAT STATUS (#tracking) & BANTUAN */}
         <aside className="xl:col-span-4 space-y-5">
-          {/* Panel Tracking Status */}
+          {/* Panel Tracking Status dari status_history */}
           <div
             id="tracking"
             className="rounded-2xl bg-white border border-slate-200/80 p-5 shadow-2xs space-y-4 scroll-mt-20"
@@ -877,76 +934,114 @@ export default function DetailPengajuanPage() {
               </div>
             </div>
 
-            <ol className="relative border-l-2 border-slate-200 ml-3 space-y-5 py-1">
-              {/* Tahap 1: Pengiriman Berkas */}
-              <li className="pl-5 relative">
-                <span className="absolute -left-[9px] top-0.5 w-4 h-4 rounded-full bg-app-primary ring-4 ring-white flex items-center justify-center">
-                  <span className="w-1.5 h-1.5 rounded-full bg-white" />
-                </span>
-                <p className="text-xs font-extrabold text-slate-900">
-                  Pengajuan Dikirim
-                </p>
-                <p className="text-[10.5px] text-slate-400 mt-0.5">
-                  {submittedDateTime.date} • {submittedDateTime.time}
-                </p>
-                <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
-                  Pemohon mengirimkan formulir pengajuan dan dokumen
-                  persyaratan.
-                </p>
-              </li>
+            {statusHistoryList.length === 0 ? (
+              <p className="text-xs text-slate-500 py-2">
+                Belum ada riwayat perubahan status.
+              </p>
+            ) : (
+              <ol className="relative border-l-2 border-slate-200 ml-3 space-y-5 py-1">
+                {statusHistoryList.map((item, idx) => {
+                  const historyMeta =
+                    STATUS_META[item.status] ?? STATUS_META.menunggu_verifikasi;
+                  const occurred = formatDateTime(item.occurred_at);
+                  const isLatest = idx === statusHistoryList.length - 1;
 
-              {/* Tahap 2: Menunggu Verifikasi */}
-              <li className="pl-5 relative">
-                <span className="absolute -left-[9px] top-0.5 w-4 h-4 rounded-full bg-sky-500 ring-4 ring-white flex items-center justify-center">
-                  <span className="w-1.5 h-1.5 rounded-full bg-white" />
-                </span>
-                <p className="text-xs font-extrabold text-slate-900">
-                  Menunggu Verifikasi Admin
-                </p>
-                <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
-                  Berkas masuk ke antrean pemeriksaan Bagian Kesejahteraan
-                  Rakyat.
-                </p>
-              </li>
-
-              {/* Tahap 3: Keputusan Akhir */}
-              <li className="pl-5 relative">
-                <span
-                  className={`absolute -left-[9px] top-0.5 w-4 h-4 rounded-full ring-4 ring-white flex items-center justify-center ${
-                    submission.status === "terverifikasi"
+                  const dotBgClass =
+                    item.status === "terverifikasi"
                       ? "bg-emerald-500"
-                      : submission.status === "ditolak"
+                      : item.status === "ditolak"
                         ? "bg-red-500"
-                        : "bg-slate-200"
-                  }`}
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-white" />
-                </span>
-                <p
-                  className={`text-xs font-extrabold ${
-                    submission.status === "terverifikasi"
+                        : isLatest
+                          ? "bg-sky-500"
+                          : "bg-app-primary";
+
+                  const titleColorClass =
+                    item.status === "terverifikasi"
                       ? "text-emerald-700"
-                      : submission.status === "ditolak"
+                      : item.status === "ditolak"
                         ? "text-red-700"
-                        : "text-slate-400"
-                  }`}
-                >
-                  {submission.status === "terverifikasi"
-                    ? "Terverifikasi"
-                    : submission.status === "ditolak"
-                      ? "Ditolak"
-                      : "Hasil Verifikasi"}
-                </p>
-                <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
-                  {submission.status === "terverifikasi"
-                    ? "Berkas dinyatakan lengkap dan memenuhi persyaratan."
-                    : submission.status === "ditolak"
-                      ? "Permohonan ditolak berdasarkan hasil verifikasi."
-                      : "Menunggu keputusan hasil verifikasi dari Admin Kesra."}
-                </p>
-              </li>
-            </ol>
+                        : "text-slate-900";
+
+                  return (
+                    <li
+                      key={`${item.status}-${item.occurred_at}-${idx}`}
+                      className="pl-5 relative"
+                    >
+                      <span
+                        className={`absolute -left-[9px] top-0.5 w-4 h-4 rounded-full ring-4 ring-white flex items-center justify-center ${dotBgClass}`}
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                      </span>
+
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <p
+                          className={`text-xs font-extrabold ${titleColorClass}`}
+                        >
+                          {item.title}
+                        </p>
+                        <span
+                          className={`px-2 py-0.5 rounded-full border text-[9.5px] font-bold ${historyMeta.badgeClass}`}
+                        >
+                          {historyMeta.label}
+                        </span>
+                      </div>
+
+                      <p className="text-[10.5px] text-slate-400 mt-0.5">
+                        {occurred.date} • {occurred.time}
+                      </p>
+
+                      {item.description && (
+                        <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
+                          {item.description}
+                        </p>
+                      )}
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
           </div>
+
+          {/* Riwayat Catatan Verifikasi (jika lebih dari 1 review) */}
+          {sortedReviews.length > 1 && (
+            <div className="rounded-2xl bg-white border border-slate-200/80 p-5 shadow-2xs space-y-3">
+              <h3 className="text-xs font-extrabold text-slate-900">
+                Riwayat Evaluasi Verifikator ({sortedReviews.length})
+              </h3>
+              <div className="space-y-2.5">
+                {sortedReviews.map((review) => {
+                  const reviewDate = formatDateTime(review.created_at);
+                  const isApproved = review.decision === "terverifikasi";
+                  return (
+                    <div
+                      key={review.id}
+                      className={`rounded-xl p-3 border text-xs space-y-1 ${
+                        isApproved
+                          ? "bg-emerald-50/60 border-emerald-200/80"
+                          : "bg-red-50/60 border-red-200/80"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span
+                          className={`font-extrabold ${
+                            isApproved ? "text-emerald-700" : "text-red-700"
+                          }`}
+                        >
+                          {isApproved ? "Terverifikasi" : "Ditolak"}
+                        </span>
+                        <span className="text-[10px] text-slate-500">
+                          {reviewDate.date}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-700 leading-relaxed">
+                        {review.note}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Panel Pernyataan & Bantuan */}
           <div className="rounded-2xl bg-app-primary-50/70 border border-app-primary-200/80 p-5 space-y-3">

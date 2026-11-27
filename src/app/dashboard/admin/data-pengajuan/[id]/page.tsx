@@ -17,122 +17,27 @@ import {
   XCircle,
   ShieldCheck,
   MapPin,
-  Banknote,
   Layers,
-  X,
-  AlertCircle,
-  Hash,
-  FileSpreadsheet,
   Send,
   Phone,
   Mail,
   Users2,
   Maximize2,
   Sparkles,
+  Hash,
+  FileSpreadsheet,
+  AlertCircle,
+  Loader2,
 } from "lucide-react";
-
-type AdminSubmissionStatus =
-  | "menunggu_verifikasi"
-  | "terverifikasi"
-  | "ditolak";
-
-interface UploadedDoc {
-  file: File;
-  previewUrl: string;
-  sizeLabel: string;
-}
-
-interface DocRequirement {
-  key: string;
-  label: string;
-  required: boolean;
-  formatLabel: string;
-}
-
-interface AdminSubmissionDetail {
-  id: string;
-  nomorPengajuan: string;
-  tanggalMasuk: string;
-  waktuMasuk: string;
-  status: AdminSubmissionStatus;
-  catatanVerifikasi?: string;
-  tanggalVerifikasi?: string;
-  verifikator?: string;
-  pemohon: {
-    namaLengkap: string;
-    nik: string;
-    nomorHp: string;
-    email: string;
-    alamat: string;
-  };
-  organisasi: {
-    namaOrganisasi: string;
-    jenisOrganisasi: string;
-    alamat: string;
-    ketua: string;
-    sekretaris: string;
-    bendahara: string;
-  };
-  permohonan: {
-    tahunAnggaran: string;
-    bidang: string;
-    namaKegiatan: string;
-    tujuan: string;
-    latarBelakang: string;
-    jumlahDana: number;
-    lokasiKegiatan: string;
-    waktuPelaksanaan: string;
-  };
-  uploadedDocKeys: string[];
-}
-
-const DOC_REQUIREMENTS: DocRequirement[] = [
-  {
-    key: "proposal",
-    label: "Proposal Permohonan Hibah",
-    required: true,
-    formatLabel: "PDF",
-  },
-  {
-    key: "suratPermohonan",
-    label: "Surat Permohonan Hibah",
-    required: true,
-    formatLabel: "PDF",
-  },
-  {
-    key: "profilOrganisasi",
-    label: "Profil Organisasi / Lembaga",
-    required: true,
-    formatLabel: "PDF",
-  },
-  {
-    key: "aktaPendirian",
-    label: "Akta Pendirian / SKT",
-    required: true,
-    formatLabel: "PDF",
-  },
-  {
-    key: "skKepengurusan",
-    label: "SK Kepengurusan Aktif",
-    required: true,
-    formatLabel: "PDF",
-  },
-  {
-    key: "ktpKetua",
-    label: "KTP Ketua / Pimpinan",
-    required: true,
-    formatLabel: "PDF / JPG",
-  },
-  {
-    key: "dokumenPendukung",
-    label: "Dokumen Pendukung Lainnya",
-    required: false,
-    formatLabel: "PDF / JPG",
-  },
-];
+import {
+  GrantApplicationDocument,
+  GrantApplicationStatus,
+} from "@/features/pemohon-pengajuan/types/pengajuan.type";
+import APP_CONFIG from "@/shared/global/app_config"; // Sesuaikan path import APP_CONFIG Anda
+import { useAdminPengajuan } from "@/features/admin-pengajuan/hooks/usePengajuan.hook";
 
 const STATUS_META: Record<
-  AdminSubmissionStatus,
+  GrantApplicationStatus,
   {
     label: string;
     badgeClass: string;
@@ -172,188 +77,6 @@ const VERIFICATION_TEMPLATES: Record<"terverifikasi" | "ditolak", string[]> = {
   ],
 };
 
-const DUMMY_ADMIN_DETAILS: Record<string, AdminSubmissionDetail> = {
-  "hb-2026-001": {
-    id: "hb-2026-001",
-    nomorPengajuan: "HIB-2026-001",
-    tanggalMasuk: "16 November 2026",
-    waktuMasuk: "09:42 WITA",
-    status: "menunggu_verifikasi",
-    pemohon: {
-      namaLengkap: "Ahmad Fauzi",
-      nik: "5204081205880003",
-      nomorHp: "081237889910",
-      email: "ahmad.fauzi@nuruliman.or.id",
-      alamat:
-        "Jl. Kebayan No. 14, Kelurahan Uma Sima, Kecamatan Sumbawa, Kabupaten Sumbawa",
-    },
-    organisasi: {
-      namaOrganisasi: "Yayasan Nurul Iman Sumbawa",
-      jenisOrganisasi: "Yayasan / Lembaga Keagamaan",
-      alamat:
-        "Jl. Garuda Gg. Melati No. 08, Kelurahan Lempeh, Kecamatan Sumbawa, Kabupaten Sumbawa",
-      ketua: "Ahmad Fauzi",
-      sekretaris: "Siti Rahmawati, S.Pd.",
-      bendahara: "Muhammad Ridwan, S.E.",
-    },
-    permohonan: {
-      tahunAnggaran: "2026",
-      bidang: "Pendidikan & Pembinaan Keagamaan",
-      namaKegiatan:
-        "Bantuan Pendidikan & Rehabilitasi Ruang Belajar TPQ Al-Hikmah",
-      tujuan:
-        "Meningkatkan kelayakan sarana dan prasarana pendidikan keagamaan non-formal serta menciptakan lingkungan belajar mengaji yang aman, bersih, dan kondusif bagi 145 santri.",
-      latarBelakang:
-        "Kondisi atap dan ruang kelas Taman Pendidikan Al-Quran (TPQ) Al-Hikmah saat ini mengalami kerusakan ringan hingga sedang akibat usia bangunan, sementara jumlah santri aktif terus meningkat setiap tahunnya sehingga dibutuhkan perbaikan ruang belajar yang layak dan nyaman.",
-      jumlahDana: 50000000,
-      lokasiKegiatan:
-        "Jl. Garuda Gg. Melati No. 08, Kelurahan Lempeh, Kecamatan Sumbawa, Kabupaten Sumbawa",
-      waktuPelaksanaan: "Desember 2026 – Februari 2027",
-    },
-    uploadedDocKeys: [
-      "proposal",
-      "suratPermohonan",
-      "profilOrganisasi",
-      "aktaPendirian",
-      "skKepengurusan",
-      "ktpKetua",
-      "dokumenPendukung",
-    ],
-  },
-  "hb-2026-004": {
-    id: "hb-2026-004",
-    nomorPengajuan: "HIB-2026-004",
-    tanggalMasuk: "10 November 2026",
-    waktuMasuk: "14:15 WITA",
-    status: "terverifikasi",
-    tanggalVerifikasi: "12 November 2026",
-    verifikator: "H. Muhammad Zainuddin, S.Sos.",
-    catatanVerifikasi:
-      "Seluruh berkas administrasi, akta pendirian, dan rincian RAB dinyatakan lengkap serta memenuhi ketentuan pengelolaan hibah daerah.",
-    pemohon: {
-      namaLengkap: "Ahmad Fauzi",
-      nik: "5204081205880003",
-      nomorHp: "081237889910",
-      email: "ahmad.fauzi@nuruliman.or.id",
-      alamat:
-        "Jl. Kebayan No. 14, Kelurahan Uma Sima, Kecamatan Sumbawa, Kabupaten Sumbawa",
-    },
-    organisasi: {
-      namaOrganisasi: "Yayasan Nurul Iman Sumbawa",
-      jenisOrganisasi: "Yayasan / Lembaga Keagamaan",
-      alamat:
-        "Jl. Garuda Gg. Melati No. 08, Kelurahan Lempeh, Kecamatan Sumbawa, Kabupaten Sumbawa",
-      ketua: "Ahmad Fauzi",
-      sekretaris: "Siti Rahmawati, S.Pd.",
-      bendahara: "Muhammad Ridwan, S.E.",
-    },
-    permohonan: {
-      tahunAnggaran: "2026",
-      bidang: "Keagamaan & Sarana Ibadah",
-      namaKegiatan:
-        "Pengadaan Perlengkapan Seni Islami dan Pembinaan Remaja Masjid",
-      tujuan:
-        "Menyediakan perlengkapan seni islami yang memadai serta wadah pembinaan positif bagi generasi muda dan remaja masjid.",
-      latarBelakang:
-        "Remaja masjid di lingkungan Kelurahan Lempeh aktif menyelenggarakan kegiatan syiar dan seni budaya Islam, namun keterbatasan peralatan pendukung menghambat latihan rutin.",
-      jumlahDana: 18500000,
-      lokasiKegiatan: "Masjid Nurul Iman, Kelurahan Lempeh, Kecamatan Sumbawa",
-      waktuPelaksanaan: "November – Desember 2026",
-    },
-    uploadedDocKeys: [
-      "proposal",
-      "suratPermohonan",
-      "profilOrganisasi",
-      "aktaPendirian",
-      "skKepengurusan",
-      "ktpKetua",
-    ],
-  },
-  "hb-2025-009": {
-    id: "hb-2025-009",
-    nomorPengajuan: "HIB-2025-009",
-    tanggalMasuk: "04 Juli 2025",
-    waktuMasuk: "11:20 WITA",
-    status: "ditolak",
-    tanggalVerifikasi: "11 Juli 2025",
-    verifikator: "H. Muhammad Zainuddin, S.Sos.",
-    catatanVerifikasi:
-      "Organisasi pemohon belum memenuhi masa terdaftar minimal 3 tahun berturut-turut sesuai peraturan hibah daerah Kabupaten Sumbawa.",
-    pemohon: {
-      namaLengkap: "Zulkifli Hasan",
-      nik: "5204100809920001",
-      nomorHp: "085239112233",
-      email: "pemudamoyo@gmail.com",
-      alamat:
-        "Dusun Moyo Mekar, Desa Moyo, Kecamatan Moyo Hilir, Kabupaten Sumbawa",
-    },
-    organisasi: {
-      namaOrganisasi: "Kelompok Pemuda Moyo Hilir",
-      jenisOrganisasi: "Kelompok Masyarakat / Karang Taruna",
-      alamat: "Desa Moyo, Kecamatan Moyo Hilir, Kabupaten Sumbawa",
-      ketua: "Zulkifli Hasan",
-      sekretaris: "Rina Marlina",
-      bendahara: "Dedi Kurniawan",
-    },
-    permohonan: {
-      tahunAnggaran: "2025",
-      bidang: "Kepemudaan & Kemasyarakatan",
-      namaKegiatan:
-        "Permohonan Bantuan Pengadaan Perlengkapan Turnamen Olahraga",
-      tujuan:
-        "Menyediakan sarana pertandingan dan perlengkapan turnamen pemuda antar desa.",
-      latarBelakang:
-        "Mendorong kegiatan olahraga kepemudaan antar desa di Kecamatan Moyo Hilir.",
-      jumlahDana: 40000000,
-      lokasiKegiatan: "Lapangan Desa Moyo, Kecamatan Moyo Hilir",
-      waktuPelaksanaan: "Agustus 2025",
-    },
-    uploadedDocKeys: [
-      "proposal",
-      "suratPermohonan",
-      "profilOrganisasi",
-      "aktaPendirian",
-      "skKepengurusan",
-      "ktpKetua",
-    ],
-  },
-};
-
-function createDummyPdfFile(fileName: string, titleText: string): File {
-  const safeText = titleText.replace(/[()\\]/g, "");
-  const pdfContent = `%PDF-1.4
-1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj
-2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj
-3 0 obj << /Type /Page /Parent 2 0 R /Resources << /Font << /F1 4 0 R >> >> /MediaBox [0 0 595 842] /Contents 5 0 R >> endobj
-4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> endobj
-5 0 obj << /Length 130 >>
-stream
-BT
-/F1 16 Tf
-50 760 Td
-(ARSIP DOKUMEN VERIFIKASI - E-HIBAH KAB. SUMBAWA) Tj
-0 -30 Td
-/F1 12 Tf
-(${safeText}) Tj
-ET
-endstream
-endobj
-xref
-0 6
-0000000000 65535 f 
-0000000009 00000 n 
-0000000058 00000 n 
-0000000115 00000 n 
-0000000229 00000 n 
-0000000302 00000 n 
-trailer << /Size 6 /Root 1 0 R >>
-startxref
-482
-%%EOF`;
-
-  return new File([pdfContent], fileName, { type: "application/pdf" });
-}
-
 function formatRupiah(amount: number): string {
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
@@ -362,102 +85,176 @@ function formatRupiah(amount: number): string {
   }).format(amount);
 }
 
+function formatBytes(bytes: number): string {
+  if (!bytes || bytes <= 0) return "0 KB";
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function formatDateTime(isoString?: string | null): {
+  date: string;
+  time: string;
+} {
+  if (!isoString) return { date: "-", time: "-" };
+  const parsed = new Date(isoString);
+  if (Number.isNaN(parsed.getTime())) return { date: isoString, time: "" };
+
+  return {
+    date: parsed.toLocaleDateString("id-ID", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    }),
+    time:
+      parsed.toLocaleTimeString("id-ID", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }) + " WITA",
+  };
+}
+
+function resolveFileUrl(rawUrl?: string | null): string {
+  if (!rawUrl) return "";
+  if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
+    return rawUrl;
+  }
+  return `${APP_CONFIG.STORAGE_URL}${rawUrl.startsWith("/") ? "" : "/"}${rawUrl}`;
+}
+
 export default function AdminDetailPengajuanPage() {
   const params = useParams();
   const router = useRouter();
-  const idParam = typeof params?.id === "string" ? params.id : "hb-2026-001";
+  const idParam = typeof params?.id === "string" ? params.id : "";
 
-  const initialData: AdminSubmissionDetail = DUMMY_ADMIN_DETAILS[idParam] || {
-    ...DUMMY_ADMIN_DETAILS["hb-2026-001"],
-    id: idParam,
-    nomorPengajuan: idParam.toUpperCase(),
-  };
+  const {
+    detailPengajuan,
+    isLoadingDetail,
+    isVerifying,
+    fetchDetailPengajuan,
+    verifikasiPengajuan,
+    error: apiError,
+    clearError,
+  } = useAdminPengajuan();
 
-  const [detail, setDetail] = useState<AdminSubmissionDetail>(initialData);
-  const [documents, setDocuments] = useState<Record<string, UploadedDoc>>({});
-  const [activeDocKey, setActiveDocKey] = useState<string>("proposal");
+  const [activeDocId, setActiveDocId] = useState<string>("");
 
-  // State Form Verifikasi Inline (Tanpa Modal & Tanpa Checkbox)
+  // State Form Verifikasi Inline
   const [verifyDecision, setVerifyDecision] = useState<
     "terverifikasi" | "ditolak"
-  >(initialData.status === "ditolak" ? "ditolak" : "terverifikasi");
-  const [verifyNote, setVerifyNote] = useState<string>(
-    initialData.catatanVerifikasi || "",
-  );
-  const [isSaving, setIsSaving] = useState(false);
-  const [toastBanner, setToastBanner] = useState<string | null>(null);
+  >("terverifikasi");
+  const [verifyNote, setVerifyNote] = useState<string>("");
 
-  // Inisialisasi file PDF dummy
+  // Fetch detail pengajuan saat halaman dimuat
   useEffect(() => {
-    const generated: Record<string, UploadedDoc> = {};
+    if (idParam) {
+      fetchDetailPengajuan(idParam);
+    }
+  }, [idParam, fetchDetailPengajuan]);
 
-    detail.uploadedDocKeys.forEach((key) => {
-      const req = DOC_REQUIREMENTS.find((r) => r.key === key);
-      if (!req) return;
-      const cleanName = `${req.label.replace(/[^a-zA-Z0-9]+/g, "_")}_${
-        detail.nomorPengajuan
-      }.pdf`;
-      const file = createDummyPdfFile(
-        cleanName,
-        `${req.label} - ${detail.nomorPengajuan}`,
-      );
-      generated[key] = {
-        file,
-        previewUrl: URL.createObjectURL(file),
-        sizeLabel: "420 KB",
-      };
-    });
+  // Sinkronkan dokumen aktif & status awal form verifikasi saat detailPengajuan dimuat
+  useEffect(() => {
+    if (!detailPengajuan) return;
 
-    setDocuments(generated);
-    if (detail.uploadedDocKeys.length > 0) {
-      setActiveDocKey(detail.uploadedDocKeys[0]);
+    const firstAttached = detailPengajuan.documents.find((d) =>
+      Boolean(d.download_url),
+    );
+    if (firstAttached) {
+      setActiveDocId(firstAttached.id);
+    } else if (detailPengajuan.documents.length > 0) {
+      setActiveDocId(detailPengajuan.documents[0].id);
     }
 
-    return () => {
-      Object.values(generated).forEach((d) =>
-        URL.revokeObjectURL(d.previewUrl),
-      );
-    };
-  }, [detail.id, detail.nomorPengajuan, detail.uploadedDocKeys]);
+    if (detailPengajuan.status === "ditolak") {
+      setVerifyDecision("ditolak");
+    } else {
+      setVerifyDecision("terverifikasi");
+    }
+  }, [detailPengajuan]);
 
-  const statusInfo = STATUS_META[detail.status];
-  const StatusIcon = statusInfo.icon;
+  if (isLoadingDetail) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3 text-center">
+        <Loader2 className="w-7 h-7 animate-spin text-app-primary" />
+        <p className="text-xs font-semibold text-slate-600">
+          Memuat detail pengajuan hibah...
+        </p>
+      </div>
+    );
+  }
 
-  const requiredDocs = DOC_REQUIREMENTS.filter((d) => d.required);
+  if (!detailPengajuan) {
+    return (
+      <div className="py-12 max-w-lg mx-auto">
+        <div className="rounded-3xl bg-white border border-red-200 p-6 text-center space-y-4 shadow-2xs">
+          <div className="mx-auto w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+          <div className="space-y-1">
+            <h2 className="text-base font-extrabold text-slate-900">
+              Gagal Memuat Detail Pengajuan
+            </h2>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              {apiError || "Data pengajuan tidak ditemukan."}
+            </p>
+          </div>
+          <div className="flex items-center justify-center gap-2.5 pt-1">
+            <button
+              type="button"
+              onClick={() => router.push("/dashboard/admin/data-pengajuan")}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-slate-700 cursor-pointer"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Kembali</span>
+            </button>
+            {idParam && (
+              <button
+                type="button"
+                onClick={() => fetchDetailPengajuan(idParam)}
+                className="px-4 py-2 rounded-xl bg-app-primary hover:bg-app-primary-800 text-white text-xs font-bold cursor-pointer"
+              >
+                Coba Lagi
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const detail = detailPengajuan;
+  const statusInfo =
+    STATUS_META[detail.status] ?? STATUS_META.menunggu_verifikasi;
+  const submittedDateTime = formatDateTime(detail.submitted_at);
+
+  const requiredDocs = detail.documents.filter((d) => d.is_required);
   const uploadedRequiredCount = requiredDocs.filter((d) =>
-    detail.uploadedDocKeys.includes(d.key),
+    Boolean(d.download_url),
   ).length;
   const isAllRequiredComplete = uploadedRequiredCount === requiredDocs.length;
 
-  const activeDoc = documents[activeDocKey];
-  const activeDocMeta = DOC_REQUIREMENTS.find((r) => r.key === activeDocKey);
+  const activeDoc: GrantApplicationDocument | undefined =
+    detail.documents.find((d) => d.id === activeDocId) ??
+    detail.documents.find((d) => Boolean(d.download_url));
+
+  const activeDocUrl = resolveFileUrl(activeDoc?.download_url);
 
   const handleSelectDecision = (decision: "terverifikasi" | "ditolak") => {
+    clearError();
     setVerifyDecision(decision);
     if (!verifyNote.trim()) {
       setVerifyNote(VERIFICATION_TEMPLATES[decision][0]);
     }
   };
 
-  const handleSaveVerification = (e: React.FormEvent) => {
+  const handleSaveVerification = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!verifyNote.trim()) return;
+    if (!verifyNote.trim() || !detail.id) return;
 
-    setIsSaving(true);
-    setTimeout(() => {
-      setDetail((prev) => ({
-        ...prev,
-        status: verifyDecision,
-        catatanVerifikasi: verifyNote.trim(),
-        tanggalVerifikasi: "25 November 2026",
-        verifikator: "H. Muhammad Zainuddin, S.Sos.",
-      }));
-      setIsSaving(false);
-      setToastBanner(
-        `Keputusan verifikasi untuk ${detail.nomorPengajuan} berhasil ditetapkan sebagai "${STATUS_META[verifyDecision].label}".`,
-      );
-      setTimeout(() => setToastBanner(null), 5000);
-    }, 300);
+    clearError();
+    await verifikasiPengajuan(detail.id, {
+      decision: verifyDecision,
+      note: verifyNote.trim(),
+    });
   };
 
   return (
@@ -485,7 +282,7 @@ export default function AdminDetailPengajuanPage() {
           </Link>
           <ChevronRight className="w-3 h-3 text-slate-400" />
           <span className="text-app-primary font-bold">
-            {detail.nomorPengajuan}
+            {detail.submission_number}
           </span>
         </nav>
 
@@ -499,20 +296,14 @@ export default function AdminDetailPengajuanPage() {
         </button>
       </div>
 
-      {/* Notifikasi Toast */}
-      {toastBanner && (
-        <div className="flex items-center justify-between gap-2 rounded-2xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-xs font-semibold text-emerald-800 shadow-2xs">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>{toastBanner}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setToastBanner(null)}
-            className="text-emerald-600 hover:text-emerald-900 cursor-pointer"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
+      {/* Banner Error API */}
+      {apiError && (
+        <div
+          role="alert"
+          className="flex items-center gap-2.5 rounded-2xl bg-red-50 border border-red-200 px-4 py-3 text-xs font-semibold text-red-700"
+        >
+          <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+          <span>{apiError}</span>
         </div>
       )}
 
@@ -525,7 +316,7 @@ export default function AdminDetailPengajuanPage() {
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 text-white font-mono text-xs font-extrabold">
                 <Hash className="w-3.5 h-3.5 text-app-secondary" />
-                {detail.nomorPengajuan}
+                {detail.submission_number}
               </span>
 
               <span
@@ -538,19 +329,19 @@ export default function AdminDetailPengajuanPage() {
               </span>
 
               <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-[11px] font-bold">
-                TA {detail.permohonan.tahunAnggaran}
+                TA {detail.fiscal_year}
               </span>
             </div>
 
             <h1 className="text-lg sm:text-2xl font-extrabold text-slate-900 tracking-tight leading-snug">
-              {detail.permohonan.namaKegiatan}
+              {detail.activity.activity_name}
             </h1>
 
             <p className="text-xs sm:text-sm font-semibold text-app-primary">
-              {detail.organisasi.namaOrganisasi}{" "}
+              {detail.organization.name}{" "}
               <span className="text-slate-400 font-normal">
-                • Diajukan oleh {detail.pemohon.namaLengkap} pada{" "}
-                {detail.tanggalMasuk} ({detail.waktuMasuk})
+                • Diajukan oleh {detail.applicant.full_name} pada{" "}
+                {submittedDateTime.date} ({submittedDateTime.time})
               </span>
             </p>
           </div>
@@ -561,27 +352,13 @@ export default function AdminDetailPengajuanPage() {
               Total Dana Dimohon
             </p>
             <p className="text-xl sm:text-2xl font-extrabold text-app-primary-950 mt-0.5">
-              {formatRupiah(detail.permohonan.jumlahDana)}
+              {formatRupiah(detail.requested_amount)}
             </p>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              Bidang: {detail.permohonan.bidang}
+              Bidang: {detail.field}
             </p>
           </div>
         </div>
-
-        {/* Banner Catatan Verifikasi Jika Sudah Diproses */}
-        {detail.catatanVerifikasi && (
-          <div className="rounded-2xl bg-slate-50 border border-slate-200/80 p-3.5 flex items-start gap-2.5 text-xs text-slate-700">
-            <ShieldCheck className="w-4 h-4 text-app-primary shrink-0 mt-0.5" />
-            <div>
-              <span className="font-extrabold text-slate-900">
-                Hasil Verifikasi ({detail.verifikator} •{" "}
-                {detail.tanggalVerifikasi}):{" "}
-              </span>
-              <span>{detail.catatanVerifikasi}</span>
-            </div>
-          </div>
-        )}
       </header>
 
       {/* =====================================================================
@@ -592,8 +369,11 @@ export default function AdminDetailPengajuanPage() {
             KOLOM KIRI (8 KOLOM): DOKUMEN INSPECTOR + DETAIL DATA
         -------------------------------------------------------------------- */}
         <div className="lg:col-span-8 space-y-6">
-          {/* A. INLINE DOCUMENT INSPECTOR (TANPA BUKA-TUTUP MODAL) */}
-          <section className="rounded-3xl bg-white border border-slate-200/90 shadow-2xs overflow-hidden">
+          {/* A. INLINE DOCUMENT INSPECTOR */}
+          <section
+            id="dokumen"
+            className="rounded-3xl bg-white border border-slate-200/90 shadow-2xs overflow-hidden scroll-mt-20"
+          >
             <div className="px-5 sm:px-6 py-4 bg-slate-50/80 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-app-primary text-white flex items-center justify-center shrink-0">
@@ -622,21 +402,23 @@ export default function AdminDetailPengajuanPage() {
               </span>
             </div>
 
-            {/* Split Viewer: Daftar File (4 col) + PDF Frame (8 col) */}
+            {/* Split Viewer: Daftar File (5 col) + File Frame (7 col) */}
             <div className="grid grid-cols-1 md:grid-cols-12">
               {/* Daftar Berkas */}
               <div className="md:col-span-5 border-b md:border-b-0 md:border-r border-slate-100 p-3 space-y-1.5 bg-slate-50/40 max-h-[540px] overflow-y-auto">
-                {DOC_REQUIREMENTS.map((req, idx) => {
-                  const doc = documents[req.key];
-                  const isAttached = Boolean(doc);
-                  const isSelected = activeDocKey === req.key;
+                {detail.documents.map((doc, idx) => {
+                  const isAttached = Boolean(doc.download_url);
+                  const isSelected = activeDoc?.id === doc.id;
+                  const formatLabel = doc.mime_type?.startsWith("image/")
+                    ? "Gambar"
+                    : "PDF";
 
                   return (
                     <button
-                      key={req.key}
+                      key={doc.id}
                       type="button"
                       disabled={!isAttached}
-                      onClick={() => isAttached && setActiveDocKey(req.key)}
+                      onClick={() => isAttached && setActiveDocId(doc.id)}
                       className={`w-full text-left rounded-2xl p-3 transition-all flex items-start justify-between gap-2 ${
                         !isAttached
                           ? "opacity-50 cursor-not-allowed bg-transparent"
@@ -653,11 +435,11 @@ export default function AdminDetailPengajuanPage() {
                               : "bg-slate-100 text-slate-500"
                           }`}
                         >
-                          0{idx + 1}
+                          {String(idx + 1).padStart(2, "0")}
                         </span>
                         <div className="min-w-0">
                           <p className="text-xs font-bold leading-snug truncate">
-                            {req.label}
+                            {doc.display_name}
                           </p>
                           <p
                             className={`text-[10px] mt-0.5 ${
@@ -667,8 +449,8 @@ export default function AdminDetailPengajuanPage() {
                             }`}
                           >
                             {isAttached
-                              ? `${doc.sizeLabel} • ${req.formatLabel}`
-                              : req.required
+                              ? `${formatBytes(doc.file_size_bytes)} • ${formatLabel}`
+                              : doc.is_required
                                 ? "Berkas wajib tidak dilampirkan"
                                 : "Opsional (Tidak dilampirkan)"}
                           </p>
@@ -691,23 +473,23 @@ export default function AdminDetailPengajuanPage() {
                 })}
               </div>
 
-              {/* Area Pratinjau PDF Inline */}
+              {/* Area Pratinjau File Inline */}
               <div className="md:col-span-7 flex flex-col bg-slate-100/80">
-                {activeDoc ? (
+                {activeDoc && activeDocUrl ? (
                   <>
                     <div className="px-4 py-2.5 bg-white border-b border-slate-200/80 flex items-center justify-between gap-2">
                       <div className="min-w-0">
                         <p className="text-xs font-extrabold text-slate-900 truncate">
-                          {activeDocMeta?.label}
+                          {activeDoc.display_name}
                         </p>
                         <p className="text-[10.5px] text-slate-400 truncate">
-                          {activeDoc.file.name}
+                          {activeDoc.original_filename}
                         </p>
                       </div>
 
                       <div className="flex items-center gap-1.5 shrink-0">
                         <a
-                          href={activeDoc.previewUrl}
+                          href={activeDocUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           title="Buka di Tab Baru"
@@ -716,8 +498,10 @@ export default function AdminDetailPengajuanPage() {
                           <Maximize2 className="w-3.5 h-3.5" />
                         </a>
                         <a
-                          href={activeDoc.previewUrl}
-                          download={activeDoc.file.name}
+                          href={activeDocUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          download={activeDoc.original_filename}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold transition-colors"
                         >
                           <Download className="w-3.5 h-3.5 text-app-secondary" />
@@ -726,12 +510,21 @@ export default function AdminDetailPengajuanPage() {
                       </div>
                     </div>
 
-                    <div className="p-3 flex-1">
-                      <iframe
-                        src={activeDoc.previewUrl}
-                        title={activeDocMeta?.label || "Pratinjau Dokumen"}
-                        className="w-full h-[460px] rounded-2xl border border-slate-200 bg-white shadow-2xs"
-                      />
+                    <div className="p-3 flex-1 flex items-center justify-center">
+                      {activeDoc.mime_type?.startsWith("image/") ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={activeDocUrl}
+                          alt={activeDoc.display_name}
+                          className="max-h-[460px] w-auto rounded-2xl border border-slate-200 bg-white object-contain shadow-2xs"
+                        />
+                      ) : (
+                        <iframe
+                          src={activeDocUrl}
+                          title={activeDoc.display_name}
+                          className="w-full h-[460px] rounded-2xl border border-slate-200 bg-white shadow-2xs"
+                        />
+                      )}
                     </div>
                   </>
                 ) : (
@@ -757,13 +550,25 @@ export default function AdminDetailPengajuanPage() {
                   Substansi Proposal & Pelaksanaan
                 </h2>
                 <p className="text-[11px] text-slate-500">
-                  Latar belakang, tujuan kegiatan, lokasi, dan jadwal
+                  Latar belakang, tujuan kegiatan, lokasi, manfaat, dan jadwal
                 </p>
               </div>
             </div>
 
             <div className="p-5 sm:p-6 space-y-4 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                <div className="rounded-2xl bg-slate-50 border border-slate-100 p-3.5 flex items-start gap-2.5">
+                  <Layers className="w-4 h-4 text-app-primary shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-[10.5px] font-semibold text-slate-400">
+                      Bidang & Tahun
+                    </p>
+                    <p className="font-bold text-slate-800 mt-0.5 leading-snug">
+                      {detail.field} (TA {detail.fiscal_year})
+                    </p>
+                  </div>
+                </div>
+
                 <div className="rounded-2xl bg-slate-50 border border-slate-100 p-3.5 flex items-start gap-2.5">
                   <MapPin className="w-4 h-4 text-app-secondary-600 shrink-0 mt-0.5" />
                   <div>
@@ -771,7 +576,7 @@ export default function AdminDetailPengajuanPage() {
                       Lokasi Kegiatan
                     </p>
                     <p className="font-bold text-slate-800 mt-0.5 leading-snug">
-                      {detail.permohonan.lokasiKegiatan}
+                      {detail.activity.activity_location}
                     </p>
                   </div>
                 </div>
@@ -783,7 +588,7 @@ export default function AdminDetailPengajuanPage() {
                       Waktu Pelaksanaan
                     </p>
                     <p className="font-bold text-slate-800 mt-0.5">
-                      {detail.permohonan.waktuPelaksanaan}
+                      {detail.activity.activity_period}
                     </p>
                   </div>
                 </div>
@@ -795,7 +600,7 @@ export default function AdminDetailPengajuanPage() {
                     Tujuan Kegiatan
                   </p>
                   <p className="text-slate-700 leading-relaxed mt-1">
-                    {detail.permohonan.tujuan}
+                    {detail.activity.objectives}
                   </p>
                 </div>
 
@@ -804,7 +609,16 @@ export default function AdminDetailPengajuanPage() {
                     Latar Belakang Permohonan
                   </p>
                   <p className="text-slate-700 leading-relaxed mt-1">
-                    {detail.permohonan.latarBelakang}
+                    {detail.activity.background}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl bg-slate-50/60 p-4 border border-slate-100">
+                  <p className="text-[10.5px] font-extrabold uppercase tracking-wider text-slate-400">
+                    Manfaat yang Diharapkan
+                  </p>
+                  <p className="text-slate-700 leading-relaxed mt-1">
+                    {detail.activity.expected_benefits}
                   </p>
                 </div>
               </div>
@@ -824,7 +638,7 @@ export default function AdminDetailPengajuanPage() {
                     Profil Lembaga Pengusul
                   </h2>
                   <p className="text-[11px] text-slate-500">
-                    {detail.organisasi.jenisOrganisasi}
+                    {detail.organization.organization_type}
                   </p>
                 </div>
               </div>
@@ -835,8 +649,27 @@ export default function AdminDetailPengajuanPage() {
                     Nama Organisasi
                   </span>
                   <p className="font-bold text-slate-900">
-                    {detail.organisasi.namaOrganisasi}
+                    {detail.organization.name}
                   </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <span className="text-[10.5px] text-slate-400">
+                      No. Akta Pendirian
+                    </span>
+                    <p className="font-semibold text-slate-800">
+                      {detail.organization.deed_number || "-"}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-[10.5px] text-slate-400">
+                      No. SK / Registrasi
+                    </span>
+                    <p className="font-semibold text-slate-800">
+                      {detail.organization.registration_number || "-"}
+                    </p>
+                  </div>
                 </div>
 
                 <div>
@@ -844,7 +677,7 @@ export default function AdminDetailPengajuanPage() {
                     Alamat Sekretariat
                   </span>
                   <p className="font-semibold text-slate-700 leading-relaxed">
-                    {detail.organisasi.alamat}
+                    {detail.organization.address}
                   </p>
                 </div>
 
@@ -855,15 +688,16 @@ export default function AdminDetailPengajuanPage() {
                   </div>
                   <p className="text-slate-700">
                     <span className="text-slate-400">Ketua:</span>{" "}
-                    <strong>{detail.organisasi.ketua}</strong>
+                    <strong>{detail.organization.chair_name}</strong> (
+                    {detail.organization.chair_phone})
                   </p>
                   <p className="text-slate-700">
                     <span className="text-slate-400">Sekretaris:</span>{" "}
-                    {detail.organisasi.sekretaris}
+                    {detail.organization.secretary_name}
                   </p>
                   <p className="text-slate-700">
                     <span className="text-slate-400">Bendahara:</span>{" "}
-                    {detail.organisasi.bendahara}
+                    {detail.organization.treasurer_name}
                   </p>
                 </div>
               </div>
@@ -891,21 +725,31 @@ export default function AdminDetailPengajuanPage() {
                     Nama & NIK
                   </span>
                   <p className="font-bold text-slate-900">
-                    {detail.pemohon.namaLengkap}
+                    {detail.applicant.full_name}
                   </p>
                   <p className="font-mono text-[11px] text-slate-500">
-                    NIK: {detail.pemohon.nik}
+                    NIK: {detail.applicant.nik}
+                  </p>
+                </div>
+
+                <div>
+                  <span className="text-[10.5px] text-slate-400">
+                    Tempat, Tanggal Lahir
+                  </span>
+                  <p className="font-semibold text-slate-800">
+                    {detail.applicant.birth_place},{" "}
+                    {formatDateTime(detail.applicant.birth_date).date}
                   </p>
                 </div>
 
                 <div className="flex flex-col gap-1 text-slate-700">
                   <span className="inline-flex items-center gap-1.5">
                     <Phone className="w-3.5 h-3.5 text-slate-400" />
-                    {detail.pemohon.nomorHp}
+                    {detail.applicant.phone}
                   </span>
                   <span className="inline-flex items-center gap-1.5 break-all">
                     <Mail className="w-3.5 h-3.5 text-slate-400" />
-                    {detail.pemohon.email}
+                    {detail.applicant.email}
                   </span>
                 </div>
 
@@ -914,7 +758,7 @@ export default function AdminDetailPengajuanPage() {
                     Alamat Domisili
                   </span>
                   <p className="font-semibold text-slate-700 leading-relaxed mt-0.5">
-                    {detail.pemohon.alamat}
+                    {detail.applicant.address}
                   </p>
                 </div>
               </div>
@@ -923,9 +767,12 @@ export default function AdminDetailPengajuanPage() {
         </div>
 
         {/* -------------------------------------------------------------------
-            KOLOM KANAN (4 KOLOM): STICKY DECISION DESK (TANPA MODAL & CENTANG)
+            KOLOM KANAN (4 KOLOM): STICKY DECISION DESK
         -------------------------------------------------------------------- */}
-        <aside className="lg:col-span-4 lg:sticky lg:top-20">
+        <aside
+          id="verifikasi"
+          className="lg:col-span-4 lg:sticky lg:top-20 scroll-mt-20"
+        >
           <form
             onSubmit={handleSaveVerification}
             className="rounded-3xl bg-white border border-slate-200/90 shadow-sm overflow-hidden"
@@ -933,7 +780,7 @@ export default function AdminDetailPengajuanPage() {
             {/* Header Panel Keputusan */}
             <div className="px-5 py-4 bg-gradient-to-r from-app-primary-950 to-app-primary text-white">
               <span className="text-[10px] font-extrabold uppercase tracking-wider text-app-secondary">
-                Meja Verifikator • {detail.nomorPengajuan}
+                Meja Verifikator • {detail.submission_number}
               </span>
               <h2 className="text-sm font-extrabold mt-0.5">
                 Keputusan Hasil Verifikasi
@@ -941,6 +788,19 @@ export default function AdminDetailPengajuanPage() {
             </div>
 
             <div className="p-5 space-y-5 text-xs">
+              {!detail.can_verify && (
+                <div className="flex items-start gap-2 rounded-xl bg-slate-50 border border-slate-200 p-3 text-[11px] text-slate-600">
+                  <ShieldCheck className="w-4 h-4 text-app-primary shrink-0 mt-0.5" />
+                  <span>
+                    Pengajuan ini sudah berstatus{" "}
+                    <strong className="text-slate-900">
+                      {statusInfo.label}
+                    </strong>{" "}
+                    dan tidak lagi memerlukan tindakan verifikasi ulang.
+                  </span>
+                </div>
+              )}
+
               {/* 1. Pill Selektor Keputusan */}
               <div className="space-y-2">
                 <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500">
@@ -950,8 +810,9 @@ export default function AdminDetailPengajuanPage() {
                 <div className="grid grid-cols-2 gap-2.5">
                   <button
                     type="button"
+                    disabled={!detail.can_verify || isVerifying}
                     onClick={() => handleSelectDecision("terverifikasi")}
-                    className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col gap-1.5 ${
+                    className={`p-3 rounded-2xl border text-left transition-all flex flex-col gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer ${
                       verifyDecision === "terverifikasi"
                         ? "bg-emerald-50 border-emerald-500 text-emerald-900 ring-2 ring-emerald-500/20"
                         : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
@@ -974,8 +835,9 @@ export default function AdminDetailPengajuanPage() {
 
                   <button
                     type="button"
+                    disabled={!detail.can_verify || isVerifying}
                     onClick={() => handleSelectDecision("ditolak")}
-                    className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col gap-1.5 ${
+                    className={`p-3 rounded-2xl border text-left transition-all flex flex-col gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer ${
                       verifyDecision === "ditolak"
                         ? "bg-rose-50 border-rose-500 text-rose-900 ring-2 ring-rose-500/20"
                         : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
@@ -998,30 +860,33 @@ export default function AdminDetailPengajuanPage() {
                 </div>
               </div>
 
-              {/* 2. Quick-Reason Chips (Pengganti Checklist Berkas) */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-slate-500">
-                  <Sparkles className="w-3.5 h-3.5 text-app-primary" />
-                  <span>2. Pilih Template Berita Acara</span>
-                </div>
+              {/* 2. Quick-Reason Chips */}
+              {detail.can_verify && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-slate-500">
+                    <Sparkles className="w-3.5 h-3.5 text-app-primary" />
+                    <span>2. Pilih Template Berita Acara</span>
+                  </div>
 
-                <div className="space-y-1.5">
-                  {VERIFICATION_TEMPLATES[verifyDecision].map((tpl, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => setVerifyNote(tpl)}
-                      className={`w-full text-left p-2.5 rounded-xl border text-[11px] leading-snug transition-colors cursor-pointer ${
-                        verifyNote === tpl
-                          ? "bg-app-primary-50 border-app-primary text-app-primary-950 font-semibold"
-                          : "bg-slate-50/80 border-slate-200/80 text-slate-600 hover:bg-slate-100"
-                      }`}
-                    >
-                      {tpl}
-                    </button>
-                  ))}
+                  <div className="space-y-1.5">
+                    {VERIFICATION_TEMPLATES[verifyDecision].map((tpl, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        disabled={isVerifying}
+                        onClick={() => setVerifyNote(tpl)}
+                        className={`w-full text-left p-2.5 rounded-xl border text-[11px] leading-snug transition-colors cursor-pointer disabled:opacity-60 ${
+                          verifyNote === tpl
+                            ? "bg-app-primary-50 border-app-primary text-app-primary-950 font-semibold"
+                            : "bg-slate-50/80 border-slate-200/80 text-slate-600 hover:bg-slate-100"
+                        }`}
+                      >
+                        {tpl}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* 3. Catatan Resmi untuk Pemohon */}
               <div className="space-y-1.5">
@@ -1029,7 +894,7 @@ export default function AdminDetailPengajuanPage() {
                   htmlFor="berita-acara-verifikasi"
                   className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500"
                 >
-                  3.{" "}
+                  {detail.can_verify ? "3. " : "2. "}
                   {verifyDecision === "terverifikasi"
                     ? "Catatan Hasil Verifikasi"
                     : "Alasan Penolakan"}{" "}
@@ -1039,6 +904,7 @@ export default function AdminDetailPengajuanPage() {
                   id="berita-acara-verifikasi"
                   rows={4}
                   required
+                  disabled={!detail.can_verify || isVerifying}
                   value={verifyNote}
                   onChange={(e) => setVerifyNote(e.target.value)}
                   placeholder={
@@ -1046,11 +912,11 @@ export default function AdminDetailPengajuanPage() {
                       ? "Tuliskan ringkasan kelengkapan dokumen dan rekomendasi..."
                       : "Jelaskan alasan penolakan agar diketahui oleh pemohon..."
                   }
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50/70 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15 leading-relaxed"
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50/70 px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-app-primary focus:outline-none focus:ring-3 focus:ring-app-primary/15 leading-relaxed disabled:opacity-60"
                 />
               </div>
 
-              {verifyDecision === "ditolak" && (
+              {verifyDecision === "ditolak" && detail.can_verify && (
                 <div className="flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-200 p-3 text-[11px] text-amber-800">
                   <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                   <span>
@@ -1061,24 +927,33 @@ export default function AdminDetailPengajuanPage() {
               )}
 
               {/* Tombol Simpan Keputusan */}
-              <button
-                type="submit"
-                disabled={isSaving || !verifyNote.trim()}
-                className={`w-full py-3 px-4 rounded-2xl text-xs font-extrabold text-white shadow-sm flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50 ${
-                  verifyDecision === "terverifikasi"
-                    ? "bg-emerald-600 hover:bg-emerald-700"
-                    : "bg-rose-600 hover:bg-rose-700"
-                }`}
-              >
-                <Send className="w-3.5 h-3.5" />
-                <span>
-                  {isSaving
-                    ? "Menyimpan..."
-                    : verifyDecision === "terverifikasi"
-                      ? "Tetapkan Terverifikasi"
-                      : "Tetapkan Ditolak"}
-                </span>
-              </button>
+              {detail.can_verify && (
+                <button
+                  type="submit"
+                  disabled={isVerifying || !verifyNote.trim()}
+                  className={`w-full py-3 px-4 rounded-2xl text-xs font-extrabold text-white shadow-sm flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50 ${
+                    verifyDecision === "terverifikasi"
+                      ? "bg-emerald-600 hover:bg-emerald-700"
+                      : "bg-rose-600 hover:bg-rose-700"
+                  }`}
+                >
+                  {isVerifying ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Menyimpan Keputusan...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-3.5 h-3.5" />
+                      <span>
+                        {verifyDecision === "terverifikasi"
+                          ? "Tetapkan Terverifikasi"
+                          : "Tetapkan Ditolak"}
+                      </span>
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </form>
         </aside>

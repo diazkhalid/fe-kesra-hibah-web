@@ -11,6 +11,8 @@ export async function pemohonUpsertPengajuan(
   payload: PemohonUpsertGrantApplicationDto,
 ) {
   try {
+    console.log(payload);
+
     const formData = new FormData();
 
     // Append basic fields
@@ -30,9 +32,8 @@ export async function pemohonUpsertPengajuan(
 
     // Append documents
     payload.documents.forEach((document, index) => {
-      formData.append(`document_type[${index}]`, document.document_type);
-
       if (document.file) {
+        formData.append(`document_type[${index}]`, document.document_type);
         formData.append(`file[${index}]`, document.file);
       }
     });

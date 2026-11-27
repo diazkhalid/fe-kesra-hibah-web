@@ -61,8 +61,8 @@ export default function AdminSidebar({
           label: "Data Pengajuan",
           href: "/dashboard/admin/data-pengajuan",
           icon: FileSpreadsheet,
-          badge:
-            pendingSubmissionsCount > 0 ? pendingSubmissionsCount : undefined,
+          // badge:
+          //   pendingSubmissionsCount > 0 ? pendingSubmissionsCount : undefined,
         },
         {
           label: "Laporan Hasil Verifikasi",
